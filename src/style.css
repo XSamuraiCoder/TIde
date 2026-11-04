@@ -1,0 +1,91 @@
+/* Tide — palette is taken from the hardware: grey body, off-white LCD, ink-black text,
+   one blue (the 2nd key) for anything interactive. */
+:root {
+  --body: #d8dbde;
+  --panel: #e8eaec;
+  --paper: #fbfbf9;
+  --lcd: #f3f4ee;
+  --ink: #1d232b;
+  --muted: #667080;
+  --rule: #c3c8ce;
+  --key: #2a5ea8;
+  --key-wash: #dbe5f3;
+  --warn: #a85d12;
+  --danger: #a8322b;
+  --bezel: #2a2e34;
+  --ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Cascadia Code", "JetBrains Mono", "SF Mono", Consolas, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font: 13px/1.4 var(--ui); background: var(--body); color: var(--ink); overflow: hidden; }
+:focus-visible { outline: 2px solid var(--key); outline-offset: -2px; }
+
+.app { display: grid; grid-template-columns: 210px minmax(0, 1fr); height: 100%; }
+
+.hint { color: var(--muted); font-size: 12px; }
+
+/* Program list */
+.side { background: var(--panel); border-right: 1px solid var(--rule); display: flex; flex-direction: column; min-height: 0; }
+#find, #cat-find {
+  margin: 10px; padding: 6px 8px; font: 13px var(--mono); text-transform: uppercase;
+  background: var(--paper); color: var(--ink); border: 1px solid var(--rule); border-radius: 3px;
+}
+#find::placeholder, #cat-find::placeholder { text-transform: none; font-family: var(--ui); color: var(--muted); }
+#list { list-style: none; overflow-y: auto; flex: 1; }
+#list li { display: flex; align-items: center; padding: 0 10px 0 14px; height: 28px; font: 13px var(--mono); cursor: default; }
+#list li:hover { background: var(--body); }
+#list li[aria-selected="true"] { background: var(--key-wash); box-shadow: inset 3px 0 var(--key); }
+#list .name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+#list .unsaved { color: var(--warn); margin-right: 6px; }
+#list .del { color: var(--muted); background: none; border: 0; cursor: pointer; padding: 2px 6px; visibility: hidden; font-size: 14px; }
+#list li:hover .del, #list li:focus-within .del { visibility: visible; }
+#list .del:hover { color: var(--danger); }
+#list-empty { padding: 4px 14px; }
+
+/* Workspace */
+.workspace { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--paper); }
+.tabs { display: flex; height: 34px; background: var(--panel); border-bottom: 1px solid var(--rule); overflow-x: auto; flex-shrink: 0; }
+.tab { display: flex; align-items: center; gap: 8px; padding: 0 8px 0 14px; font: 12px var(--mono); border-right: 1px solid var(--rule); cursor: default; white-space: nowrap; }
+.tab[aria-selected="true"] { background: var(--paper); box-shadow: inset 0 2px var(--key); margin-bottom: -1px; }
+.tab .close { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 14px; padding: 2px 5px; border-radius: 3px; }
+.tab .close:hover { background: var(--body); color: var(--ink); }
+.tab .dirty { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+
+.stage { position: relative; flex: 1; min-height: 0; }
+#editor { position: absolute; inset: 0; }
+.empty { position: absolute; inset: 0; display: grid; place-content: center; gap: 6px; text-align: center; background: var(--paper); }
+.empty[hidden] { display: none; }
+
+.status { display: flex; gap: 20px; align-items: center; height: 24px; padding: 0 14px; background: var(--panel); border-top: 1px solid var(--rule); color: var(--muted); font-size: 12px; flex-shrink: 0; }
+.status #status-msg { flex: 1; }
+.status span { font-variant-numeric: tabular-nums; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #b4bac1; border: 2px solid var(--panel); border-radius: 5px; }
+@media (prefers-reduced-motion: no-preference) { #list li, .tab { transition: background .1s; } }
+
+/* Sidebar switcher + catalog */
+#cat-find { text-transform: none; font-family: var(--ui); }
+.switch { display: flex; border-bottom: 1px solid var(--rule); flex-shrink: 0; }
+.switch button { flex: 1; padding: 9px 0 8px; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; font: inherit; color: var(--muted); cursor: pointer; }
+.switch button:hover { color: var(--ink); }
+.switch button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--key); }
+.pane { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.pane[hidden] { display: none; }
+#catalog { flex: 1; overflow-y: auto; padding-bottom: 10px; }
+#catalog h3 { font: 600 12px var(--ui); color: var(--muted); padding: 12px 14px 4px; }
+#catalog .item { display: flex; width: 100%; align-items: baseline; gap: 8px; padding: 4px 14px; background: none; border: 0; text-align: left; cursor: pointer; font: inherit; color: var(--ink); }
+#catalog .item:hover { background: var(--body); }
+#catalog .item code { font: 12.5px var(--mono); flex: 0 0 76px; }
+#catalog .item span { color: var(--muted); font-size: 12px; }
+
+/* Text that runs past the calculator's 26 columns */
+.overflow { background: color-mix(in srgb, var(--warn) 20%, transparent); box-shadow: inset 0 -1px var(--warn); }
+
+.status button { font: inherit; color: var(--muted); background: none; border: 0; cursor: pointer; padding: 2px 6px; border-radius: 3px; }
+.status button:hover { color: var(--ink); background: var(--body); }
+
+.status #problems.has-errors { color: var(--danger); }
+.status #problems.has-warnings { color: var(--warn); }

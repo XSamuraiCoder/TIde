@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tide</title>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="side">
+        <div class="switch" role="tablist" aria-label="Sidebar">
+          <button id="tab-programs" role="tab" aria-selected="true" aria-controls="pane-programs">Programs</button>
+          <button id="tab-catalog" role="tab" aria-selected="false" aria-controls="pane-catalog">Catalog</button>
+        </div>
+
+        <section id="pane-programs" class="pane">
+          <input id="find" type="text" spellcheck="false" autocomplete="off" maxlength="8"
+                 placeholder="Find or create" aria-label="Find or create a program" />
+          <ul id="list" role="listbox" aria-label="Program list"></ul>
+          <p id="list-empty" class="hint" hidden>No match. Press Enter to create it.</p>
+        </section>
+
+        <section id="pane-catalog" class="pane" hidden>
+          <input id="cat-find" type="text" spellcheck="false" autocomplete="off"
+                 placeholder="Search commands" aria-label="Search commands" />
+          <div id="catalog"></div>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <div id="tabs" class="tabs" role="tablist" aria-label="Open programs"></div>
+        <div class="stage">
+          <div id="editor"></div>
+          <div id="empty" class="empty">
+            <p>Pick a program from the list, or type a new name and press Enter.</p>
+            <p class="hint">Names are 1–8 letters or digits and start with a letter.</p>
+          </div>
+        </div>
+        <footer class="status">
+          <span id="status-msg" role="status">Ready</span>
+          <span id="status-pos"></span>
+          <span id="status-size" title="Estimated size once tokenized"></span>
+          <button id="problems" type="button" title="Jump to the next problem" hidden></button>
+          <button id="gutter" type="button" aria-pressed="false"
+                  title="Switch between the calculator's ':' gutter and line numbers"></button>
+        </footer>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
