@@ -1,8 +1,12 @@
+
 name: Build
 
 on:
   push:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 concurrency:
   group: build-${{ github.ref }}
@@ -12,6 +16,7 @@ jobs:
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+
     strategy:
       fail-fast: false
       matrix:
@@ -23,6 +28,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
@@ -61,3 +68,38 @@ jobs:
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/rpm/*.rpm
             src-tauri/target/release/bundle/appimage/*.AppImage
+
+  release:
+    name: Publish Latest Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all installers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tide-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Update latest tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git init
+          git remote add origin https://github.com/${{ github.repository }}.git
+          git fetch origin
+          git tag -f latest ${{ github.sha }}
+          git push origin refs/tags/latest --force
+
+      - name: Create or update latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --yes || true
+          gh release create latest \
+            release-assets/* \
+            --repo "${{ github.repository }}" \
+            --title "Latest Build" \
+            --notes "Latest automated build from commit ${{ github.sha }}" \
+            --latest
