@@ -33,4 +33,52 @@ const browserStore: Store = {
   async remove(name) { localStorage.removeItem(PREFIX + name); },
 };
 
-export const store: Store = "__TAURI_INTERNALS__" in window ? tauriStore : browserStore;
+const isTauri = "__TAURI_INTERNALS__" in window;
+export const store: Store = isTauri ? tauriStore : browserStore;
+
+// ── Project folders and file IO (desktop app only) ─────────────────────────
+
+export interface Entry { name: string; path: string; isDir: boolean }
+
+export interface Fs {
+  available: boolean;
+  pickFolder(): Promise<string | null>;
+  pickSaveFile(defaultName: string): Promise<string | null>;
+  readDir(path: string): Promise<Entry[]>;
+  readFile(path: string): Promise<string>;
+  writeFile(path: string, contents: string): Promise<void>;
+  writeBinary(path: string, bytes: Uint8Array): Promise<void>;
+}
+
+const unavailable = () => Promise.reject(new Error("Opening folders needs the desktop app."));
+
+export const fs: Fs = isTauri
+  ? {
+      available: true,
+      async pickFolder() {
+        const { open } = await import("@tauri-apps/plugin-dialog");
+        const picked = await open({ directory: true, multiple: false });
+        return typeof picked === "string" ? picked : null;
+      },
+      async pickSaveFile(defaultName) {
+        const { save } = await import("@tauri-apps/plugin-dialog");
+        const picked = await save({
+          defaultPath: defaultName,
+          filters: [{ name: "TI-84 program", extensions: ["8xp"] }],
+        });
+        return typeof picked === "string" ? picked : null;
+      },
+      readDir: path => invoke<Entry[]>("list_dir", { path }),
+      readFile: path => invoke<string>("read_text_file", { path }),
+      writeFile: (path, contents) => invoke<void>("write_text_file", { path, contents }),
+      writeBinary: (path, bytes) => invoke<void>("write_binary_file", { path, bytes: Array.from(bytes) }),
+    }
+  : {
+      available: false,
+      pickFolder: unavailable,
+      pickSaveFile: unavailable,
+      readDir: unavailable,
+      readFile: unavailable,
+      writeFile: unavailable,
+      writeBinary: unavailable,
+    };

@@ -33,12 +33,13 @@ body { font: 13px/1.4 var(--ui); background: var(--body); color: var(--ink); ove
   background: var(--paper); color: var(--ink); border: 1px solid var(--rule); border-radius: 3px;
 }
 #find::placeholder, #cat-find::placeholder { text-transform: none; font-family: var(--ui); color: var(--muted); }
-#list { list-style: none; overflow-y: auto; flex: 1; }
+#list { list-style: none; }
 #list li { display: flex; align-items: center; padding: 0 10px 0 14px; height: 28px; font: 13px var(--mono); cursor: default; }
 #list li:hover { background: var(--body); }
 #list li[aria-selected="true"] { background: var(--key-wash); box-shadow: inset 3px 0 var(--key); }
 #list .name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 #list .unsaved { color: var(--warn); margin-right: 6px; }
+#list .bad { color: var(--danger); font-weight: 700; margin-right: 6px; }
 #list .del { color: var(--muted); background: none; border: 0; cursor: pointer; padding: 2px 6px; visibility: hidden; font-size: 14px; }
 #list li:hover .del, #list li:focus-within .del { visibility: visible; }
 #list .del:hover { color: var(--danger); }
@@ -69,7 +70,7 @@ body { font: 13px/1.4 var(--ui); background: var(--body); color: var(--ink); ove
 /* Sidebar switcher + catalog */
 #cat-find { text-transform: none; font-family: var(--ui); }
 .switch { display: flex; border-bottom: 1px solid var(--rule); flex-shrink: 0; }
-.switch button { flex: 1; padding: 9px 0 8px; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; font: inherit; color: var(--muted); cursor: pointer; }
+.switch button { flex: 1; padding: 9px 0 8px; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; font: inherit; font-size: 12.5px; color: var(--muted); cursor: pointer; }
 .switch button:hover { color: var(--ink); }
 .switch button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--key); }
 .pane { display: flex; flex-direction: column; flex: 1; min-height: 0; }
@@ -89,3 +90,23 @@ body { font: 13px/1.4 var(--ui); background: var(--body); color: var(--ink); ove
 
 .status #problems.has-errors { color: var(--danger); }
 .status #problems.has-warnings { color: var(--warn); }
+
+/* Project tree */
+.project-head { display: flex; align-items: center; gap: 8px; padding: 10px 10px 6px 14px; }
+.project-head #project-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12px var(--ui); color: var(--ink); }
+.project-head button { font: inherit; font-size: 12px; color: var(--key); background: none; border: 1px solid var(--rule); border-radius: 3px; padding: 3px 8px; cursor: pointer; white-space: nowrap; }
+.project-head button:hover { background: var(--key-wash); }
+#tree { list-style: none; }
+#tree li { display: flex; align-items: center; gap: 4px; padding-right: 10px; height: 26px; font: 12.5px var(--mono); cursor: default; white-space: nowrap; }
+#tree li:hover { background: var(--body); }
+#tree li[aria-selected="true"] { background: var(--key-wash); box-shadow: inset 3px 0 var(--key); }
+#tree .twisty { flex: 0 0 12px; color: var(--muted); font-size: 11px; }
+#tree .name { overflow: hidden; text-overflow: ellipsis; }
+#tree-empty { padding: 4px 14px; }
+#tree-empty[hidden] { display: none; }
+
+/* One scrolling column holds both the programs and the project tree */
+.files { flex: 1; overflow-y: auto; min-height: 0; padding-bottom: 10px; }
+.files h3.group, .project-head { border-top: 0; }
+.files h3.group { font: 600 12px var(--ui); color: var(--muted); padding: 4px 14px; }
+.project-head { margin-top: 10px; border-top: 1px solid var(--rule); padding-top: 8px; }

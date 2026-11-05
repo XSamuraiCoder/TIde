@@ -2,49 +2,57 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tide</title>
   </head>
   <body>
     <div class="app">
       <aside class="side">
-        <div class="switch" role="tablist" aria-label="Sidebar">
-          <button id="tab-programs" role="tab" aria-selected="true" aria-controls="pane-programs">Programs</button>
-          <button id="tab-catalog" role="tab" aria-selected="false" aria-controls="pane-catalog">Catalog</button>
+        <div class="switch">
+          <button id="tab-files" type="button">Programs</button>
+          <button id="tab-catalog" type="button">Catalog</button>
         </div>
 
-        <section id="pane-programs" class="pane">
-          <input id="find" type="text" spellcheck="false" autocomplete="off" maxlength="8"
-                 placeholder="Find or create" aria-label="Find or create a program" />
-          <ul id="list" role="listbox" aria-label="Program list"></ul>
-          <p id="list-empty" class="hint" hidden>No match. Press Enter to create it.</p>
-        </section>
-
-        <section id="pane-catalog" class="pane" hidden>
-          <input id="cat-find" type="text" spellcheck="false" autocomplete="off"
-                 placeholder="Search commands" aria-label="Search commands" />
-          <div id="catalog"></div>
-        </section>
-      </aside>
-
-      <main class="workspace">
-        <div id="tabs" class="tabs" role="tablist" aria-label="Open programs"></div>
-        <div class="stage">
-          <div id="editor"></div>
-          <div id="empty" class="empty">
-            <p>Pick a program from the list, or type a new name and press Enter.</p>
-            <p class="hint">Names are 1–8 letters or digits and start with a letter.</p>
+        <div class="pane" id="pane-files">
+          <input id="find" placeholder="Find or create a program…" spellcheck="false" />
+          <div class="files">
+            <ul id="list"></ul>
+            <p class="hint" id="list-empty" hidden>
+              Nothing yet. Type a name and press Enter to create one.
+            </p>
+            <div class="project-head">
+              <span id="project-name">No folder open</span>
+              <button id="open-folder" type="button">Open folder</button>
+            </div>
+            <ul id="tree"></ul>
+            <p class="hint" id="tree-empty" hidden>Open a folder to see its files here.</p>
           </div>
         </div>
-        <footer class="status">
-          <span id="status-msg" role="status">Ready</span>
+
+        <div class="pane" id="pane-catalog" hidden>
+          <input id="cat-find" placeholder="Search commands…" spellcheck="false" />
+          <div id="catalog"></div>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <div class="tabs" id="tabs"></div>
+        <div class="stage">
+          <div id="editor"></div>
+          <div class="empty" id="empty">
+            <strong>Tide</strong>
+            <span class="hint">Open a program from the list, or type a name and press Enter.</span>
+          </div>
+        </div>
+        <div class="status">
+          <span id="status-msg"></span>
+          <button id="export" type="button" hidden>Build .8xp</button>
+          <button id="gutter" type="button">Gutter: ":"</button>
+          <button id="problems" type="button" hidden>No problems</button>
+          <span class="spacer"></span>
           <span id="status-pos"></span>
-          <span id="status-size" title="Estimated size once tokenized"></span>
-          <button id="problems" type="button" title="Jump to the next problem" hidden></button>
-          <button id="gutter" type="button" aria-pressed="false"
-                  title="Switch between the calculator's ':' gutter and line numbers"></button>
-        </footer>
-      </main>
+          <span id="status-size"></span>
+        </div>
+      </section>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -26,6 +26,18 @@ export function estimateBytes(source: string): number {
   return bytes;
 }
 
+/** Monaco language id for a file name, using the extensions and file names Monaco already knows. */
+export function languageFor(file: string): string {
+  const lower = file.toLowerCase();
+  const dot = lower.lastIndexOf(".");
+  const ext = dot > 0 ? lower.slice(dot) : "";
+  const langs = monaco.languages.getLanguages();
+  const hit =
+    langs.find(l => l.filenames?.some(f => f.toLowerCase() === lower)) ??
+    (ext ? langs.find(l => l.extensions?.includes(ext)) : undefined);
+  return hit?.id ?? "plaintext";
+}
+
 export function registerTiBasic(): void {
   monaco.languages.register({ id: "tibasic" });
 
@@ -73,6 +85,12 @@ export function registerTiBasic(): void {
       { token: "support.function", foreground: "1d6a72" },
       { token: "variable", foreground: "1d232b" },
       { token: "delimiter", foreground: "667080" },
+      // Other languages (C and friends) use Monaco's own tokenizers; these prefixes cover them.
+      { token: "keyword", foreground: "2a5ea8", fontStyle: "bold" },
+      { token: "keyword.directive", foreground: "7b3f8c", fontStyle: "" },
+      { token: "type", foreground: "1d6a72" },
+      { token: "predefined", foreground: "1d6a72" },
+      { token: "identifier", foreground: "1d232b" },
     ],
     colors: {
       "editor.background": "#fbfbf9",

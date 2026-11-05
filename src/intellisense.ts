@@ -1,6 +1,7 @@
 import * as monaco from "monaco-editor/editor/editor.api.js";
 import { BLOCKS, BY_NAME, COMMANDS, TOKEN_RE, mask, signature, snippetFor, usage, type Command } from "./commands";
 import { analyze } from "./analysis";
+import { tokenize } from "./build";
 
 const LANG = "tibasic";
 const analyzeModel = (model: monaco.editor.ITextModel) => analyze(model.getLinesContent());
@@ -132,7 +133,18 @@ export function registerIntellisense(): void {
 export function watchModel(model: monaco.editor.ITextModel): void {
   let timer: number | undefined;
   const run = () => {
-    if (!model.isDisposed()) monaco.editor.setModelMarkers(model, "tide", analyzeModel(model).markers);
+    if (model.isDisposed()) return;
+    const { markers } = analyzeModel(model);
+    // Characters the tokenizer can't turn into tokens are build errors too: they'd be skipped in the .8xp.
+    const { errors } = tokenize(model.getValue());
+    const noToken = errors.map(e => ({
+      severity: monaco.MarkerSeverity.Error,
+      message: `"${e.text}" has no token on this calculator — it will be skipped in the .8xp.`,
+      startLineNumber: e.line, startColumn: e.column,
+      endLineNumber: e.line, endColumn: e.column + e.text.length,
+      source: "tide",
+    }));
+    monaco.editor.setModelMarkers(model, "tide", [...markers, ...noToken]);
   };
   model.onDidChangeContent(() => { window.clearTimeout(timer); timer = window.setTimeout(run, 250); });
   run();

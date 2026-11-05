@@ -3,18 +3,26 @@ import * as monaco from "monaco-editor/editor/editor.api.js";
 import "monaco-editor"; // full entry: registers suggest, hover, parameter hints, folding and marker navigation
 import editorWorker from "monaco-editor/editor/editor.worker.js?worker";
 import "./style.css";
-import { CATALOG, estimateBytes, registerTiBasic } from "./language";
+import { CATALOG, languageFor, registerTiBasic } from "./language";
+import { C_SNIPPETS, registerC } from "./c-support";
 import { registerIntellisense, watchModel } from "./intellisense";
-import { normalizeName, store } from "./store";
+import { tokenize } from "./build";
+import { exportProgram } from "./export";
+import { fs, normalizeName, store, type Entry } from "./store";
 
 (self as unknown as { MonacoEnvironment: object }).MonacoEnvironment = { getWorker: () => new editorWorker() };
 
 const SCREEN_COLS = 26;
 
+/** One open editor tab: either a TI-BASIC program from the store or a file from the open project folder. */
 interface Doc {
-  name: string;
+  id: string;        // "prgm:NAME" or "file:/absolute/path"
+  label: string;     // tab title
+  hint?: string;     // tab tooltip (full path for project files)
+  language: string;
   model: monaco.editor.ITextModel;
   savedVersion: number;
+  write: (source: string) => Promise<void>;
 }
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -31,6 +39,11 @@ const els = {
   problems: $<HTMLButtonElement>("problems"),
   catFind: $<HTMLInputElement>("cat-find"),
   catalog: $("catalog"),
+  openFolder: $<HTMLButtonElement>("open-folder"),
+  projectName: $("project-name"),
+  tree: $("tree"),
+  treeEmpty: $("tree-empty"),
+  exportBtn: $<HTMLButtonElement>("export"),
 };
 
 function h<K extends keyof HTMLElementTagNameMap>(
@@ -45,10 +58,12 @@ function h<K extends keyof HTMLElementTagNameMap>(
 // ── State ──────────────────────────────────────────────────────────────────
 
 registerTiBasic();
+registerC();
 registerIntellisense();
 
 // The calculator shows a ":" before every line. It is a gutter, not file content, so saved programs stay clean.
 const GUTTER_PREF = "tide-pref-numbers"; // must not start with "tide:" or the browser store lists it as a program
+const PROJECT_PREF = "tide-pref-project"; // same rule
 let showNumbers = false;
 try { showNumbers = localStorage.getItem(GUTTER_PREF) === "1"; } catch { /* storage unavailable */ }
 
@@ -89,31 +104,82 @@ let tabOrder: string[] = [];
 let active: string | null = null;
 let names: string[] = [];
 
+// Build state: tokenize errors per program name, so the list can flag ones that won't build.
+const buildErrors = new Map<string, number>();
+
+// Project folder: entries are loaded one directory at a time, when it is first expanded.
+let project: { root: string; name: string } | null = null;
+const dirCache = new Map<string, Entry[]>();
+const expanded = new Set<string>();
+
+const progId = (name: string) => `prgm:${name}`;
+const fileId = (path: string) => `file:${path}`;
+const baseName = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 const isDirty = (d: Doc) => d.model.getAlternativeVersionId() !== d.savedVersion;
 const activeDoc = () => (active ? docs.get(active) : undefined);
+const isBasic = () => (activeDoc()?.language ?? "tibasic") === "tibasic";
 
 // ── Actions ────────────────────────────────────────────────────────────────
 
-async function openProgram(name: string, note?: string) {
-  if (!docs.has(name)) {
-    const source = await store.load(name);
-    const model = monaco.editor.createModel(source, "tibasic");
-    docs.set(name, { name, model, savedVersion: model.getAlternativeVersionId() });
-    model.onDidChangeContent(refresh);
-    watchModel(model);
-  }
-  if (!tabOrder.includes(name)) tabOrder.push(name);
-  active = name;
-  editor.setModel(docs.get(name)!.model);
+function addDoc(init: Pick<Doc, "id" | "label" | "hint" | "language" | "write"> & { source: string }): Doc {
+  const model = monaco.editor.createModel(init.source, init.language);
+  const doc: Doc = {
+    id: init.id, label: init.label, hint: init.hint, language: init.language,
+    model, savedVersion: model.getAlternativeVersionId(), write: init.write,
+  };
+  docs.set(doc.id, doc);
+  model.onDidChangeContent(refresh);
+  if (doc.language === "tibasic") watchModel(model);
+  else model.updateOptions({ tabSize: 4, insertSpaces: true });
+  return doc;
+}
+
+function activate(id: string, note?: string) {
+  const doc = docs.get(id);
+  if (!doc) return;
+  if (!tabOrder.includes(id)) tabOrder.push(id);
+  active = id;
+  editor.setModel(doc.model);
+  applyEditorMode();
   editor.focus();
-  setMessage(note ?? `Opened ${name}`);
+  setMessage(note ?? `Opened ${doc.label}`);
   refresh();
+}
+
+async function openProgram(name: string, note?: string) {
+  const id = progId(name);
+  if (!docs.has(id)) {
+    const source = await store.load(name);
+    if (!docs.has(id)) addDoc({ id, label: name, language: "tibasic", source, write: s => store.save(name, s) });
+  }
+  activate(id, note);
+}
+
+async function openFile(entry: Entry) {
+  const id = fileId(entry.path);
+  if (!docs.has(id)) {
+    let source: string;
+    try {
+      source = await fs.readFile(entry.path);
+    } catch (err) {
+      setMessage(`Can't open ${entry.name}: ${err}`);
+      return;
+    }
+    if (!docs.has(id)) {
+      addDoc({
+        id, label: entry.name, hint: entry.path, language: languageFor(entry.name), source,
+        write: s => fs.writeFile(entry.path, s),
+      });
+    }
+  }
+  activate(id);
 }
 
 async function createProgram(name: string) {
   if (!names.includes(name)) {
     await store.save(name, "");
     names = [...names, name].sort();
+    buildErrors.set(name, 0);
     await openProgram(name, `Created ${name}`);
   } else {
     await openProgram(name);
@@ -124,25 +190,53 @@ async function saveActive() {
   const doc = activeDoc();
   if (!doc) return;
   try {
-    await store.save(doc.name, doc.model.getValue());
+    await doc.write(doc.model.getValue());
     doc.savedVersion = doc.model.getAlternativeVersionId();
-    setMessage(`Saved ${doc.name}`);
+    if (doc.language === "tibasic") buildErrors.set(doc.label, tokenize(doc.model.getValue()).errors.length);
+    setMessage(`Saved ${doc.label}`);
   } catch (err) {
-    setMessage(`Could not save ${doc.name}: ${err}`);
+    setMessage(`Could not save ${doc.label}: ${err}`);
   }
   refresh();
 }
 
-function closeTab(name: string) {
-  const doc = docs.get(name);
-  if (doc && isDirty(doc) && !confirm(`${name} has unsaved changes. Close without saving?`)) return;
-  const index = tabOrder.indexOf(name);
-  tabOrder = tabOrder.filter(n => n !== name);
+/** Tokenizes the active TI-BASIC program and writes a real .8xp the calculator accepts. */
+async function exportActive() {
+  const doc = activeDoc();
+  if (!doc) return setMessage("Nothing to build.");
+  if (doc.language !== "tibasic") return setMessage("Only TI-BASIC programs build to .8xp.");
+  if (isDirty(doc)) await saveActive();
+  const { bytes, errors } = tokenize(doc.model.getValue());
+  let path: string | null;
+  try {
+    path = await exportProgram(doc.label, bytes);
+  } catch (err) {
+    return setMessage(`Could not build ${doc.label}: ${err}`);
+  }
+  if (!path) return; // cancelled the save dialog
+  setMessage(errors.length
+    ? `Built ${path} — ${errors.length} character${errors.length === 1 ? "" : "s"} had no token and were skipped.`
+    : `Built ${path}`);
+}
+
+/** Tokenize every stored program so the list can show which ones build cleanly. */
+async function checkPrograms() {
+  const sources = await Promise.all(names.map(n => store.load(n)));
+  names.forEach((n, i) => buildErrors.set(n, tokenize(sources[i]).errors.length));
+  renderList();
+}
+
+function closeTab(id: string) {
+  const doc = docs.get(id);
+  if (doc && isDirty(doc) && !confirm(`${doc.label} has unsaved changes. Close without saving?`)) return;
+  const index = tabOrder.indexOf(id);
+  tabOrder = tabOrder.filter(n => n !== id);
   doc?.model.dispose();
-  docs.delete(name);
-  if (active === name) {
+  docs.delete(id);
+  if (active === id) {
     active = tabOrder[Math.min(index, tabOrder.length - 1)] ?? null;
     editor.setModel(active ? docs.get(active)!.model : null);
+    applyEditorMode();
   }
   refresh();
 }
@@ -156,10 +250,50 @@ async function deleteProgram(name: string) {
     return;
   }
   names = names.filter(n => n !== name);
-  const doc = docs.get(name);
-  if (doc) { doc.savedVersion = doc.model.getAlternativeVersionId(); closeTab(name); }
+  buildErrors.delete(name);
+  const doc = docs.get(progId(name));
+  if (doc) { doc.savedVersion = doc.model.getAlternativeVersionId(); closeTab(doc.id); }
   setMessage(`Deleted ${name}`);
   refresh();
+}
+
+async function loadProject(root: string, reveal = true) {
+  const entries = await fs.readDir(root);
+  dirCache.clear();
+  expanded.clear();
+  dirCache.set(root, entries);
+  project = { root, name: baseName(root) };
+  try { localStorage.setItem(PROJECT_PREF, root); } catch { /* storage unavailable */ }
+  if (reveal) showPane("files");
+  renderTree();
+  setMessage(`Opened folder ${project.name}`);
+}
+
+async function openFolder() {
+  if (!fs.available) { setMessage("Opening folders needs the desktop app."); return; }
+  try {
+    const root = await fs.pickFolder();
+    if (root) await loadProject(root);
+  } catch (err) {
+    setMessage(`Could not open folder: ${err}`);
+  }
+}
+
+async function toggleDir(entry: Entry) {
+  if (expanded.has(entry.path)) {
+    expanded.delete(entry.path);
+  } else {
+    expanded.add(entry.path);
+    if (!dirCache.has(entry.path)) {
+      try {
+        dirCache.set(entry.path, await fs.readDir(entry.path));
+      } catch (err) {
+        expanded.delete(entry.path);
+        setMessage(`Can't read ${entry.name}: ${err}`);
+      }
+    }
+  }
+  renderTree();
 }
 
 function setMessage(text: string) { els.msg.textContent = text; }
@@ -170,13 +304,16 @@ function renderList() {
   const query = els.find.value.toUpperCase();
   const shown = names.filter(n => n.includes(query));
   els.list.replaceChildren(...shown.map(n => {
-    const doc = docs.get(n);
+    const doc = docs.get(progId(n));
+    // Open programs are checked live against their model; closed ones use the last checked source.
+    const errors = doc ? tokenize(doc.model.getValue()).errors.length : buildErrors.get(n) ?? 0;
     const row = h("li", { role: "option", tabIndex: 0 },
+      ...(errors ? [h("span", { className: "bad", title: `${errors} character${errors === 1 ? "" : "s"} won't tokenize — the .8xp will skip them.` }, "!")] : []),
       h("span", { className: "name" }, n),
       ...(doc && isDirty(doc) ? [h("span", { className: "unsaved", title: "Unsaved changes" }, "●")] : []),
       h("button", { className: "del", title: `Delete ${n}`, onclick: (e: Event) => { e.stopPropagation(); void deleteProgram(n); } }, "×"),
     );
-    row.setAttribute("aria-selected", String(n === active));
+    row.setAttribute("aria-selected", String(progId(n) === active));
     row.onclick = () => void openProgram(n);
     row.onkeydown = e => { if (e.key === "Enter") void openProgram(n); };
     return row;
@@ -184,15 +321,42 @@ function renderList() {
   els.listEmpty.hidden = shown.length > 0 || !normalizeName(query);
 }
 
-function renderTabs() {
-  els.tabs.replaceChildren(...tabOrder.map(n => {
-    const doc = docs.get(n)!;
-    const tab = h("div", { className: "tab", role: "tab", tabIndex: 0, onclick: () => void openProgram(n) },
-      n,
-      ...(isDirty(doc) ? [h("span", { className: "dirty", title: "Unsaved changes" })] : []),
-      h("button", { className: "close", title: `Close ${n}`, onclick: (e: Event) => { e.stopPropagation(); closeTab(n); } }, "×"),
+function treeRows(path: string, depth: number, out: HTMLElement[]) {
+  for (const entry of dirCache.get(path) ?? []) {
+    const open = entry.isDir && expanded.has(entry.path);
+    const row = h("li", { role: "treeitem", tabIndex: 0, title: entry.path },
+      h("span", { className: "twisty" }, entry.isDir ? (open ? "▾" : "▸") : ""),
+      h("span", { className: "name" }, entry.name),
     );
-    tab.setAttribute("aria-selected", String(n === active));
+    row.style.paddingLeft = `${10 + depth * 14}px`;
+    if (entry.isDir) row.setAttribute("aria-expanded", String(open));
+    row.setAttribute("aria-selected", String(!entry.isDir && fileId(entry.path) === active));
+    const act = () => void (entry.isDir ? toggleDir(entry) : openFile(entry));
+    row.onclick = act;
+    row.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } };
+    out.push(row);
+    if (open) treeRows(entry.path, depth + 1, out);
+  }
+}
+
+function renderTree() {
+  els.projectName.textContent = project?.name ?? "No folder open";
+  els.projectName.title = project?.root ?? "";
+  els.treeEmpty.hidden = project !== null;
+  const rows: HTMLElement[] = [];
+  if (project) treeRows(project.root, 0, rows);
+  els.tree.replaceChildren(...rows);
+}
+
+function renderTabs() {
+  els.tabs.replaceChildren(...tabOrder.map(id => {
+    const doc = docs.get(id)!;
+    const tab = h("div", { className: "tab", role: "tab", tabIndex: 0, title: doc.hint ?? doc.label, onclick: () => activate(id) },
+      doc.label,
+      ...(isDirty(doc) ? [h("span", { className: "dirty", title: "Unsaved changes" })] : []),
+      h("button", { className: "close", title: `Close ${doc.label}`, onclick: (e: Event) => { e.stopPropagation(); closeTab(id); } }, "×"),
+    );
+    tab.setAttribute("aria-selected", String(id === active));
     return tab;
   }));
 }
@@ -201,7 +365,7 @@ const overflow = editor.createDecorationsCollection();
 /** Mark text past column 25 (column 26 is taken by the ":"), which wraps on the calculator. */
 function markOverflow() {
   const doc = activeDoc();
-  if (!doc) { overflow.clear(); return; }
+  if (!doc || doc.language !== "tibasic") { overflow.clear(); return; }
   const marks: monaco.editor.IModelDeltaDecoration[] = [];
   doc.model.getLinesContent().forEach((text, i) => {
     if (text.length < SCREEN_COLS) return;
@@ -213,47 +377,77 @@ function markOverflow() {
   overflow.set(marks);
 }
 
+/** What the catalog shows depends on the toolchain of the active tab. */
+function catalogGroups() {
+  const doc = activeDoc();
+  if (!doc || doc.language === "tibasic") return CATALOG;
+  if (doc.language === "c") {
+    return [{
+      group: "C snippets",
+      entries: C_SNIPPETS.map(s => ({ name: s.label, insert: s.body, hint: s.doc })),
+    }];
+  }
+  return [];
+}
+
 function renderCatalog() {
   const q = els.catFind.value.trim().toLowerCase();
-  const nodes = CATALOG.flatMap(group => {
+  const nodes = catalogGroups().flatMap(group => {
     const entries = group.entries.filter(e => !q || `${e.name} ${e.hint}`.toLowerCase().includes(q));
     if (!entries.length) return [];
     return [
       h("h3", {}, group.group),
-      ...entries.map(e => h("button", { className: "item", type: "button", title: e.hint, onclick: () => insertSnippet(e.insert) },
+      ...entries.map(e => h("button", { className: "item", type: "button", title: e.hint, onclick: () => insertSnippet(e.insert, e.insert.includes("${")) },
         h("code", {}, e.name), h("span", {}, e.hint))),
     ];
   });
   els.catalog.replaceChildren(...(nodes.length ? nodes : [h("p", { className: "hint" }, "Nothing matches.")]));
 }
 
-function insertSnippet(text: string) {
+/** Inserts catalog text at the cursor. Monaco snippet syntax ($0, ${1:…}) expands into tab stops. */
+function insertSnippet(text: string, asSnippet = false) {
   if (!activeDoc()) { setMessage("Open a program to insert commands."); return; }
   const sel = editor.getSelection();
   if (!sel) return;
-  const end = new monaco.Selection(sel.startLineNumber, sel.startColumn + text.length, sel.startLineNumber, sel.startColumn + text.length);
-  editor.executeEdits("catalog", [{ range: sel, text, forceMoveMarkers: true }], [end]);
+  if (asSnippet) {
+    editor.trigger("catalog", "editor.action.insertSnippet", { snippet: text });
+  } else {
+    const end = new monaco.Selection(sel.startLineNumber, sel.startColumn + text.length, sel.startLineNumber, sel.startColumn + text.length);
+    editor.executeEdits("catalog", [{ range: sel, text, forceMoveMarkers: true }], [end]);
+  }
   editor.focus();
-  if (text.endsWith("(")) editor.trigger("catalog", "editor.action.triggerParameterHints", null);
+  if (!asSnippet && text.endsWith("(")) editor.trigger("catalog", "editor.action.triggerParameterHints", null);
 }
 
-function showPane(which: "programs" | "catalog") {
-  for (const k of ["programs", "catalog"] as const) {
+const PANES = ["files", "catalog"] as const;
+function showPane(which: (typeof PANES)[number]) {
+  for (const k of PANES) {
     $(`tab-${k}`).setAttribute("aria-selected", String(k === which));
     $(`pane-${k}`).hidden = k !== which;
   }
 }
 
-function applyGutter() {
-  editor.updateOptions(gutterOptions());
+/** TI-BASIC gets the calculator's ":" gutter, the 26-column ruler and its own completions; other languages get a normal editor. */
+function applyEditorMode() {
+  const basic = isBasic();
+  editor.updateOptions({
+    ...(basic ? gutterOptions() : { lineNumbers: "on" as const, lineNumbersMinChars: 3 }),
+    rulers: basic ? [SCREEN_COLS - 1] : [],
+    wordBasedSuggestions: basic ? "off" : "currentDocument",
+    suggest: { showWords: !basic, snippetsPreventQuickSuggestions: false },
+  });
+  els.gutter.hidden = !basic;
   els.gutter.textContent = showNumbers ? "Gutter: line numbers" : "Gutter: \":\"";
   els.gutter.setAttribute("aria-pressed", String(showNumbers));
+  els.exportBtn.hidden = !basic;
+  renderCatalog(); // the catalog follows the toolchain of the active tab
 }
 
 function renderProblems() {
   const doc = activeDoc();
-  els.problems.hidden = !doc;
-  if (!doc) return;
+  // Only TI-BASIC has diagnostics; showing "No problems" for C would be a claim nothing is checking.
+  els.problems.hidden = !doc || doc.language !== "tibasic";
+  if (els.problems.hidden || !doc) return;
   const markers = monaco.editor.getModelMarkers({ resource: doc.model.uri });
   const errors = markers.filter(m => m.severity === monaco.MarkerSeverity.Error).length;
   const warnings = markers.filter(m => m.severity === monaco.MarkerSeverity.Warning).length;
@@ -268,7 +462,17 @@ function renderStatus() {
   const doc = activeDoc();
   const pos = editor.getPosition();
   els.pos.textContent = doc && pos ? `Ln ${pos.lineNumber}, Col ${pos.column}` : "";
-  els.size.textContent = doc ? `≈ ${estimateBytes(doc.model.getValue()).toLocaleString()} bytes` : "";
+  if (!doc) { els.size.textContent = ""; els.size.title = ""; return; }
+  const source = doc.model.getValue();
+  if (doc.language === "tibasic") {
+    // Real tokenized size: what the calculator will store, not an estimate.
+    const { bytes } = tokenize(source);
+    els.size.textContent = `${bytes.length.toLocaleString()} bytes`;
+    els.size.title = "Tokenized size";
+  } else {
+    els.size.textContent = `${new TextEncoder().encode(source).length.toLocaleString()} bytes`;
+    els.size.title = doc.language;
+  }
 }
 
 function refresh() {
@@ -278,6 +482,7 @@ function refresh() {
   renderStatus();
   renderProblems();
   markOverflow();
+  if (project) renderTree();
 }
 
 // ── Wiring ─────────────────────────────────────────────────────────────────
@@ -287,12 +492,14 @@ els.find.addEventListener("input", renderList);
 els.catFind.addEventListener("input", renderCatalog);
 monaco.editor.onDidChangeMarkers(renderProblems);
 els.problems.addEventListener("click", () => { editor.focus(); void editor.getAction("editor.action.marker.next")?.run(); });
-$("tab-programs").addEventListener("click", () => { showPane("programs"); els.find.focus(); });
+els.exportBtn.addEventListener("click", () => void exportActive());
+$("tab-files").addEventListener("click", () => { showPane("files"); els.find.focus(); });
 $("tab-catalog").addEventListener("click", () => { showPane("catalog"); els.catFind.focus(); });
+els.openFolder.addEventListener("click", () => void openFolder());
 els.gutter.addEventListener("click", () => {
   showNumbers = !showNumbers;
   try { localStorage.setItem(GUTTER_PREF, showNumbers ? "1" : "0"); } catch { /* storage unavailable */ }
-  applyGutter();
+  applyEditorMode();
 });
 els.find.addEventListener("keydown", e => {
   if (e.key !== "Enter") return;
@@ -304,11 +511,21 @@ els.find.addEventListener("keydown", e => {
 
 const mod = (e: KeyboardEvent) => e.ctrlKey || e.metaKey;
 window.addEventListener("keydown", e => {
-  if (mod(e) && e.key === "s") { e.preventDefault(); void saveActive(); }
+  if (mod(e) && e.shiftKey && e.key.toLowerCase() === "o") { e.preventDefault(); void openFolder(); }
+  else if (mod(e) && e.key === "s") { e.preventDefault(); void saveActive(); }
+  else if (mod(e) && e.key === "e") { e.preventDefault(); void exportActive(); }
   else if (mod(e) && e.key === "w" && active) { e.preventDefault(); closeTab(active); }
-  else if (mod(e) && e.key === "n") { e.preventDefault(); showPane("programs"); els.find.focus(); }
+  else if (mod(e) && e.key === "n") { e.preventDefault(); showPane("files"); els.find.focus(); }
 });
 
-store.list().then(list => { names = list; refresh(); }).catch(err => setMessage(`Could not load programs: ${err}`));
-applyGutter();
+store.list().then(list => { names = list; refresh(); checkPrograms(); }).catch(err => setMessage(`Could not load programs: ${err}`));
+applyEditorMode();
 renderCatalog();
+renderTree();
+
+// Reopen the last project folder, quietly: if it moved or was deleted, just start empty.
+if (fs.available) {
+  let last: string | null = null;
+  try { last = localStorage.getItem(PROJECT_PREF); } catch { /* storage unavailable */ }
+  if (last) loadProject(last, false).catch(() => { project = null; renderTree(); });
+}

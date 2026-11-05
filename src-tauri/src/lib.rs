@@ -2,6 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
 
+mod project;
+
 const EXTENSION: &str = ".tide.txt";
 
 /// TI-OS program names: 1–8 chars, A–Z/0–9, first char a letter.
@@ -53,11 +55,16 @@ fn list_programs(app: tauri::AppHandle) -> Result<Vec<String>, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             save_program,
             load_program,
             delete_program,
-            list_programs
+            list_programs,
+            project::list_dir,
+            project::read_text_file,
+            project::write_text_file,
+            project::write_binary_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
