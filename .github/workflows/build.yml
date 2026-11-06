@@ -63,8 +63,20 @@ jobs:
         include:
           - name: Windows
             os: windows-latest
+            args: ""
+            target: ""
           - name: Linux
             os: ubuntu-22.04
+            args: ""
+            target: ""
+          - name: MacOS (Apple Silicon)
+            os: macos-latest
+            args: --target aarch64-apple-darwin
+            target: aarch64-apple-darwin
+          - name: MacOS (Intel)
+            os: macos-latest
+            args: --target x86_64-apple-darwin
+            target: x86_64-apple-darwin
 
     steps:
       - uses: actions/checkout@v4
@@ -82,15 +94,20 @@ jobs:
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: ./src-tauri -> target
+          key: ${{ matrix.target }}
 
       - run: npm ci
 
       - name: Build app
         uses: tauri-apps/tauri-action@v0
+        with:
+          args: ${{ matrix.args }}
 
       - name: Upload installers to the latest release
         shell: bash   # the default on Windows is PowerShell
@@ -106,10 +123,11 @@ jobs:
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/rpm/*.rpm
             src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/*/release/bundle/dmg/*.dmg
           )
           if [ ${#files[@]} -eq 0 ]; then
-            echo "::error::No installers found under src-tauri/target/release/bundle"
-            find src-tauri/target/release/bundle -type f || true
+            echo "::error::No installers found under src-tauri/target"
+            find src-tauri/target -path '*/bundle/*' -type f || true
             exit 1
           fi
           printf 'Uploading: %s\n' "${files[@]}"
