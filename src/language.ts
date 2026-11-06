@@ -1,6 +1,8 @@
 import * as monaco from "monaco-editor/editor/editor.api.js";
 import { BLOCKS, COMMANDS, bare, wordsOf, type Group } from "./commands";
 import { TOKEN_TABLE } from "./tokens";
+import { fromHex } from "./build";
+import { ceOnly, type Target } from "./target";
 
 const COMMAND_SET = new Set(COMMANDS.map(c => bare(c.name)));
 
@@ -26,6 +28,14 @@ function otherCommands() {
     .filter(n => { const k = bare(n.trimEnd()); return !listed.has(k) && !seen.has(k) && !!seen.add(k); })
     .sort((a, b) => a.localeCompare(b))
     .map(n => ({ name: n.trimEnd(), insert: n, hint: "" }));
+}
+
+const CE_ONLY_NAMES = new Set(TOKEN_TABLE.filter(([, hex]) => ceOnly(fromHex(hex))).map(([name]) => name));
+
+/** The TI-BASIC catalog for a calculator: the Plus leaves out commands it doesn't have. */
+export function tiCatalog(target: Target) {
+  if (target === "ce") return CATALOG;
+  return CATALOG.map(g => ({ ...g, entries: g.entries.filter(e => !CE_ONLY_NAMES.has(e.insert)) }));
 }
 
 export const CATALOG = [

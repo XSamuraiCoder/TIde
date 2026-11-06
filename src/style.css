@@ -59,9 +59,11 @@ body { font: 13px/1.4 var(--ui); background: var(--body); color: var(--ink); ove
 .empty { position: absolute; inset: 0; display: grid; place-content: center; gap: 6px; text-align: center; background: var(--paper); }
 .empty[hidden] { display: none; }
 
-.status { display: flex; gap: 20px; align-items: center; height: 24px; padding: 0 14px; background: var(--panel); border-top: 1px solid var(--rule); color: var(--muted); font-size: 12px; flex-shrink: 0; }
+.status { display: flex; gap: 6px; align-items: center; height: 24px; padding: 0 14px; background: var(--panel); border-top: 1px solid var(--rule); color: var(--muted); font-size: 12px; flex-shrink: 0; }
 .status > * { white-space: nowrap; flex-shrink: 0; }
 .status #status-msg { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.status .spacer { display: none; }
+.status #status-pos { margin-left: 6px; }
 .status span { font-variant-numeric: tabular-nums; }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }

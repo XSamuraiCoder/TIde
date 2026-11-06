@@ -1,10 +1,11 @@
 // TI-BASIC source -> tokens -> .8xp file. Pure functions, no Monaco or Tauri dependency.
 import { TOKEN_TABLE } from "./tokens";
+import { ceOnly, getTarget, type Target } from "./target";
 
 export interface TokenError { line: number; column: number; text: string }
 export interface Tokenized { bytes: number[]; errors: TokenError[] }
 
-const fromHex = (hex: string) => hex.match(/../g)!.map(b => parseInt(b, 16));
+export const fromHex = (hex: string) => hex.match(/../g)!.map(b => parseInt(b, 16));
 
 const TOKENS = new Map<string, number[]>(TOKEN_TABLE.map(([name, hex]) => [name, fromHex(hex)]));
 // Commands carry a trailing space in the table ("Disp "); also accept them written without it, as in Disp"HI".
@@ -19,8 +20,9 @@ const LONGEST = Math.max(...[...TOKENS.keys()].map(k => k.length));
 /**
  * Greedy longest-match tokenizer. Inside a string literal only single characters are matched, so
  * "RED" or "LEFT" stays letters instead of becoming a color or alignment token.
+ * On the Plus, CE-only commands are errors, but all-caps names like RED are just variables multiplied.
  */
-export function tokenize(source: string): Tokenized {
+export function tokenize(source: string, target: Target = getTarget()): Tokenized {
   const text = source.replace(/\r\n?/g, "\n").replace(/\n+$/, "");
   const bytes: number[] = [];
   const errors: TokenError[] = [];
@@ -39,8 +41,18 @@ export function tokenize(source: string): Tokenized {
       }
     }
 
-    if (!hit) {
+    if (hit && target === "plus" && ceOnly(hit)) {
+      if (/^[A-Z]+$/.test(text.slice(i, i + length))) {
+        length = 1;
+        hit = TOKENS.get(text[i]);
+      } else {
+        hit = undefined;
+      }
+    } else if (!hit) {
       length = String.fromCodePoint(text.codePointAt(i)!).length;
+    }
+
+    if (!hit) {
       if (errors.length < 50) errors.push({ line, column: i - lineStart + 1, text: text.slice(i, i + length) });
     } else {
       bytes.push(...hit);

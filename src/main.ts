@@ -2,8 +2,8 @@ import * as monaco from "monaco-editor/editor/editor.api.js";
 // The bare API ships no editor widgets, so the full entry is imported for its side effects.
 import "monaco-editor"; // full entry: registers suggest, hover, parameter hints, folding and marker navigation
 import editorWorker from "monaco-editor/editor/editor.worker.js?worker";
-import "./style.css";
-import { CATALOG, languageFor, registerTiBasic } from "./language";
+import { languageFor, registerTiBasic, tiCatalog } from "./language";
+import { TARGETS, getTarget, onTargetChange, setTarget } from "./target";
 import { C_CATALOG, registerC } from "./c-support";                        // ← CHANGED: full catalog, not just snippets
 import { PY_CATALOG, registerPy2ez80, watchPython } from "./py2ez80-support"; // ← CHANGED: py2ez80 support
 import { registerIntellisense, watchModel } from "./intellisense";
@@ -13,7 +13,7 @@ import { fs, normalizeName, store, type Entry } from "./store";
 
 (self as unknown as { MonacoEnvironment: object }).MonacoEnvironment = { getWorker: () => new editorWorker() };
 
-const SCREEN_COLS = 26;
+const screenCols = () => TARGETS[getTarget()].cols;
 
 /** One open editor tab: either a TI-BASIC program from the store or a file from the open project folder. */
 interface Doc {
@@ -37,6 +37,7 @@ const els = {
   pos: $("status-pos"),
   size: $("status-size"),
   gutter: $<HTMLButtonElement>("gutter"),
+  target: $<HTMLButtonElement>("target"),
   problems: $<HTMLButtonElement>("problems"),
   catFind: $<HTMLInputElement>("cat-find"),
   catalog: $("catalog"),
@@ -84,7 +85,7 @@ const editor = monaco.editor.create($("editor"), {
   lineHeight: 22,
   fontFamily: getComputedStyle(document.body).getPropertyValue("--mono"),
   minimap: { enabled: false },
-  rulers: [SCREEN_COLS - 1], // the calculator's editor fits 26 columns including the leading ":"
+  rulers: [screenCols() - 1], // the calculator's editor width includes the leading ":"
   scrollBeyondLastLine: false,
   folding: true,
   showFoldingControls: "mouseover",
@@ -111,7 +112,8 @@ let names: string[] = [];
 const buildErrors = new Map<string, number>();
 
 // Project folder: entries are loaded one directory at a time, when it is first expanded.
-let project: { root: string; name: string } | null = null;
+let project: { root: string; name: string; hasMakefile: boolean } | null = null;
+let building = false;
 const dirCache = new Map<string, Entry[]>();
 const expanded = new Set<string>();
 
@@ -121,6 +123,8 @@ const baseName = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? 
 const isDirty = (d: Doc) => d.model.getAlternativeVersionId() !== d.savedVersion;
 const activeDoc = () => (active ? docs.get(active) : undefined);
 const mod = (e: KeyboardEvent) => e.ctrlKey || e.metaKey;
+/** In a folder with a Makefile, everything except a TI-BASIC program builds with make. */
+const usesMake = () => !!project?.hasMakefile && activeDoc()?.language !== "tibasic";
 const isBasic = () => (activeDoc()?.language ?? "tibasic") === "tibasic";
 
 // ── Actions ────────────────────────────────────────────────────────────────
@@ -193,9 +197,8 @@ async function createProgram(name: string) {
   }
 }
 
-async function saveActive() {
-  const doc = activeDoc();
-  if (!doc) return;
+async function saveDoc(doc: Doc): Promise<boolean> {
+  let saved = true;
   try {
     await doc.write(doc.model.getValue());
     doc.savedVersion = doc.model.getAlternativeVersionId();
@@ -203,8 +206,45 @@ async function saveActive() {
     setMessage(`Saved ${doc.label}`);
   } catch (err) {
     setMessage(`Could not save ${doc.label}: ${err}`);
+    saved = false;
   }
   refresh();
+  return saved;
+}
+
+async function saveActive() {
+  const doc = activeDoc();
+  if (doc) await saveDoc(doc);
+}
+
+/** Saves every changed project file, runs make in the folder, and shows the result in the status bar. */
+async function buildProject() {
+  if (!project || building) return;
+  const { root, name } = project;
+  for (const doc of docs.values()) {
+    if (doc.id.startsWith("file:") && isDirty(doc) && !(await saveDoc(doc))) return;
+  }
+  building = true;
+  els.exportBtn.disabled = true;
+  setMessage(`Building ${name}…`);
+  try {
+    const { ok, output } = await fs.runMake(root);
+    const lines = output.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const last = lines[lines.length - 1] ?? "";
+    const why = ok ? last : lines.find(l => /\berror\b/i.test(l)) ?? last;
+    setMessage(ok ? `Built ${name}${why ? `: ${why}` : ""}` : `Build failed: ${why || "make exited with an error"}`);
+    els.msg.title = output.trim(); // the full make output, on hover
+    // The build usually creates folders like bin/ and obj/.
+    await Promise.all([...dirCache.keys()].map(async dir => {
+      try { dirCache.set(dir, await fs.readDir(dir)); } catch { dirCache.delete(dir); }
+    }));
+    renderTree();
+  } catch (err) {
+    setMessage(`Could not build ${name}: ${err}`);
+  } finally {
+    building = false;
+    els.exportBtn.disabled = false;
+  }
 }
 
 /** Where each program was last built, so a rebuild can skip the save dialog. */
@@ -219,6 +259,7 @@ function rememberBuild(name: string, path: string | null) {
 
 /** Tokenizes the active TI-BASIC program and writes a real .8xp the calculator accepts. Asks where only the first time, or when `pick` is set. */
 async function exportActive(pick = false) {
+  if (usesMake()) return buildProject();
   const doc = activeDoc();
   if (!doc) return setMessage("Nothing to build.");
   if (doc.language !== "tibasic") return setMessage("Only TI-BASIC programs build to .8xp.");
@@ -281,11 +322,13 @@ async function loadProject(root: string, reveal = true) {
   dirCache.clear();
   expanded.clear();
   dirCache.set(root, entries);
-  project = { root, name: baseName(root) };
+  const hasMakefile = entries.some(e => !e.isDir && /^(?:gnu)?makefile$/i.test(e.name));
+  project = { root, name: baseName(root), hasMakefile };
   try { localStorage.setItem(PROJECT_PREF, root); } catch { /* storage unavailable */ }
   if (reveal) showPane("files");
   renderTree();
-  setMessage(`Opened folder ${project.name}`);
+  applyEditorMode(); // the catalog and Build button follow the project type
+  setMessage(`Opened ${hasMakefile ? "C project" : "folder"} ${project.name}`);
 }
 
 async function openFolder() {
@@ -381,15 +424,16 @@ function renderTabs() {
 }
 
 const overflow = editor.createDecorationsCollection();
-/** Mark text past column 25 (column 26 is taken by the ":"), which wraps on the calculator. */
+/** Mark text past the screen width (one column is taken by the ":"), which wraps on the calculator. */
 function markOverflow() {
   const doc = activeDoc();
   if (!doc || doc.language !== "tibasic") { overflow.clear(); return; }
+  const cols = screenCols();
   const marks: monaco.editor.IModelDeltaDecoration[] = [];
   doc.model.getLinesContent().forEach((text, i) => {
-    if (text.length < SCREEN_COLS) return;
+    if (text.length < cols) return;
     marks.push({
-      range: new monaco.Range(i + 1, SCREEN_COLS, i + 1, text.length + 1),
+      range: new monaco.Range(i + 1, cols, i + 1, text.length + 1),
       options: { inlineClassName: "overflow", hoverMessage: { value: "Wraps onto a new row on the calculator." } },
     });
   });
@@ -398,11 +442,12 @@ function markOverflow() {
 
 /** What the catalog shows depends on the toolchain of the active tab. */
 function catalogGroups(): { group: string; entries: { name: string; insert: string; hint: string; detail?: string }[] }[] {
-  const doc = activeDoc();
-  if (!doc || doc.language === "tibasic") return CATALOG;
-  if (doc.language === "c" || doc.language === "cpp") return C_CATALOG; // the CE toolchain builds C++ too
-  if (doc.language === "python") return PY_CATALOG;
-  return [];
+  const language = activeDoc()?.language;
+  if (language === "tibasic") return tiCatalog(getTarget());
+  if (language === "python") return PY_CATALOG;
+  // The CE toolchain builds C++ too. A Makefile marks the whole folder as a C project.
+  if (language === "c" || language === "cpp" || project?.hasMakefile) return C_CATALOG;
+  return language ? [] : tiCatalog(getTarget());
 }
 
 function renderCatalog() {
@@ -465,14 +510,21 @@ function applyEditorMode() {
   const basic = isBasic();
   editor.updateOptions({
     ...(basic ? gutterOptions() : { lineNumbers: "on" as const, lineNumbersMinChars: 3 }),
-    rulers: basic ? [SCREEN_COLS - 1] : [],
+    rulers: basic ? [screenCols() - 1] : [],
     wordBasedSuggestions: basic ? "off" : "currentDocument",
     suggest: { showWords: !basic, snippetsPreventQuickSuggestions: false },
   });
   els.gutter.hidden = !basic;
   els.gutter.textContent = showNumbers ? "Gutter: line numbers" : "Gutter: \":\"";
   els.gutter.setAttribute("aria-pressed", String(showNumbers));
-  els.exportBtn.hidden = !basic || !activeDoc();
+  els.target.hidden = !basic;
+  els.target.textContent = `Target: ${TARGETS[getTarget()].label}`;
+  const make = usesMake();
+  els.exportBtn.hidden = !make && (!basic || !activeDoc());
+  els.exportBtn.textContent = make ? "Build" : "Build .8xp";
+  els.exportBtn.title = make
+    ? `Runs make in ${project?.name} (Ctrl+E). Saves changed files first.`
+    : "Ctrl+E rebuilds to the same file. Ctrl+Shift+E picks a new location.";
   renderCatalog(); // the catalog follows the toolchain of the active tab
 }
 
@@ -535,6 +587,13 @@ els.gutter.addEventListener("click", () => {
   showNumbers = !showNumbers;
   try { localStorage.setItem(GUTTER_PREF, showNumbers ? "1" : "0"); } catch { /* storage unavailable */ }
   applyEditorMode();
+});
+els.target.addEventListener("click", () => setTarget(getTarget() === "ce" ? "plus" : "ce"));
+onTargetChange(() => {
+  applyEditorMode();
+  refresh();
+  void checkPrograms();
+  setMessage(`Target: TI-84 ${TARGETS[getTarget()].label === "CE" ? "Plus CE" : "Plus"}`);
 });
 els.find.addEventListener("keydown", e => {
   if (e.key !== "Enter") return;

@@ -48,6 +48,7 @@ export interface Fs {
   readFile(path: string): Promise<string>;
   writeFile(path: string, contents: string): Promise<void>;
   writeBinary(path: string, bytes: Uint8Array): Promise<void>;
+  runMake(dir: string): Promise<{ ok: boolean; output: string }>;
 }
 
 const unavailable = () => Promise.reject(new Error("Opening folders needs the desktop app."));
@@ -72,6 +73,7 @@ export const fs: Fs = isTauri
       readFile: path => invoke<string>("read_text_file", { path }),
       writeFile: (path, contents) => invoke<void>("write_text_file", { path, contents }),
       writeBinary: (path, bytes) => invoke<void>("write_binary_file", { path, bytes: Array.from(bytes) }),
+      runMake: dir => invoke<{ ok: boolean; output: string }>("run_make", { dir }),
     }
   : {
       available: false,
@@ -81,4 +83,5 @@ export const fs: Fs = isTauri
       readFile: unavailable,
       writeFile: unavailable,
       writeBinary: unavailable,
+      runMake: unavailable,
     };

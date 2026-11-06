@@ -1,6 +1,7 @@
 // Pure analysis of a TI-BASIC program: block structure, labels, and problems.
 // No Monaco runtime dependency, so it is easy to test.
 import { COMMANDS, TOKEN_RE, bare, mask } from "./commands";
+import { TARGETS, getTarget } from "./target";
 
 export const Severity = { Hint: 1, Info: 2, Warning: 4, Error: 8 } as const;
 
@@ -66,6 +67,16 @@ function splitArgs(raw: string, from: number): { text: string; start: number }[]
   return args;
 }
 
+/** The allowed [first, last] of each leading screen-position argument, for the current target. */
+function positionLimits(word: string): [string, number, number][] | undefined {
+  const t = TARGETS[getTarget()];
+  if (word === "Output") return [["Row", 1, t.rows], ["Column", 1, t.cols]];
+  if (word === "Text" || word === "Pxl-On" || word === "Pxl-Off" || word === "Pxl-Change") {
+    return [["Pixel row", 0, t.pixelRows - 1], ["Pixel column", 0, t.pixelCols - 1]];
+  }
+  return undefined;
+}
+
 export function analyze(lines: string[]): Analysis {
   const markers: Marker[] = [];
   const blocks: Block[] = [];
@@ -94,6 +105,18 @@ export function analyze(lines: string[]): Analysis {
       const after = code.slice(m.index! + word.length);
 
       if (OPENERS.has(word)) { stack.push({ kind: word, line, column: col, end }); continue; }
+
+      // Only plain numbers can be checked. Text(-1,… (the CE's large font) shifts its arguments, so it is skipped.
+      const limits = after.startsWith("(") ? positionLimits(word) : undefined;
+      if (limits) {
+        const args = splitArgs(raw, m.index! + word.length + 1);
+        if (!args[0]?.text.trim().startsWith("-")) limits.forEach(([what, first, last], a) => {
+          const text = args[a]?.text.trim() ?? "";
+          if (!/^\d+$/.test(text) || (+text >= first && +text <= last)) return;
+          const at = args[a].start + args[a].text.indexOf(text) + 1;
+          report(Severity.Warning, line, at, at + text.length, `${what} ${text} is off screen on the ${TARGETS[getTarget()].label} (${first}–${last}).`);
+        });
+      }
 
       switch (word) {
         case "Else":

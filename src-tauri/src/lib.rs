@@ -64,7 +64,8 @@ pub fn run() {
             project::list_dir,
             project::read_text_file,
             project::write_text_file,
-            project::write_binary_file
+            project::write_binary_file,
+            project::run_make
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

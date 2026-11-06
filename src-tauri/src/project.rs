@@ -1,6 +1,8 @@
 // Folder browsing and text-file IO for opened projects.
 use serde::Serialize;
 use std::fs;
+use std::io::ErrorKind;
+use std::process::Command;
 
 /// Never worth showing in a project tree.
 const SKIP: &[&str] = &[".git", "node_modules", "target", ".DS_Store"];
@@ -57,4 +59,58 @@ pub fn write_text_file(path: String, contents: String) -> Result<(), String> {
 #[tauri::command]
 pub fn write_binary_file(path: String, bytes: Vec<u8>) -> Result<(), String> {
     fs::write(&path, bytes).map_err(|e| e.to_string())
+}
+
+#[derive(Serialize)]
+pub struct MakeResult {
+    ok: bool,
+    output: String,
+}
+
+/// Runs `make` in a project folder. Async so a long build doesn't freeze the window.
+#[tauri::command(async)]
+pub fn run_make(dir: String) -> Result<MakeResult, String> {
+    let mut command = Command::new("make");
+    command.current_dir(&dir);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    let out = command.output().map_err(|e| match e.kind() {
+        ErrorKind::NotFound => "make was not found. Install the CE toolchain and add it to PATH.".to_string(),
+        _ => e.to_string(),
+    })?;
+    let mut output = String::from_utf8_lossy(&out.stdout).into_owned();
+    output.push_str(&String::from_utf8_lossy(&out.stderr));
+    Ok(MakeResult { ok: out.status.success(), output })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_in(name: &str, makefile: &str) -> MakeResult {
+        let dir = std::env::temp_dir().join(format!("tide-make-{name}-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("Makefile"), makefile).unwrap();
+        let result = run_make(dir.to_string_lossy().into_owned()).unwrap();
+        fs::remove_dir_all(&dir).unwrap();
+        result
+    }
+
+    #[test]
+    fn reports_success_and_output() {
+        let result = make_in("ok", "all:\n\t@echo built\n");
+        assert!(result.ok);
+        assert!(result.output.contains("built"));
+    }
+
+    #[test]
+    fn reports_failure_and_stderr() {
+        let result = make_in("bad", "all:\n\t@exit 3\n");
+        assert!(!result.ok);
+        assert!(!result.output.is_empty());
+    }
 }

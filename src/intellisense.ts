@@ -2,6 +2,7 @@ import * as monaco from "monaco-editor/editor/editor.api.js";
 import { BLOCKS, BY_NAME, COMMANDS, TOKEN_RE, mask, signature, snippetFor, usage, type Command } from "./commands";
 import { analyze } from "./analysis";
 import { tokenize } from "./build";
+import { onTargetChange } from "./target";
 
 const LANG = "tibasic";
 const analyzeModel = (model: monaco.editor.ITextModel) => analyze(model.getLinesContent());
@@ -147,5 +148,6 @@ export function watchModel(model: monaco.editor.ITextModel): void {
     monaco.editor.setModelMarkers(model, "tide", [...markers, ...noToken]);
   };
   model.onDidChangeContent(() => { window.clearTimeout(timer); timer = window.setTimeout(run, 250); });
+  model.onWillDispose(onTargetChange(run));
   run();
 }

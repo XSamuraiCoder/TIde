@@ -41,7 +41,7 @@ export const COMMANDS: Command[] = [
   ctl("DelVar", "Deletes a variable to free memory.", { usage: "DelVar variable" }),
 
   io("Disp", "Prints values on the home screen, one per line.", { usage: "Disp value[,value…]" }),
-  io("Output(", "Prints at a position on the home screen.", { params: [p("row", "1–10"), p("column", "1–26"), p("value", "Text or number")] }),
+  io("Output(", "Prints at a position on the home screen.", { params: [p("row", "1–10 on CE, 1–8 on Plus"), p("column", "1–26 on CE, 1–16 on Plus"), p("value", "Text or number")] }),
   io("Input", "Asks for a value and stores it in the variable.", { usage: 'Input ["text",]variable' }),
   io("Prompt", "Asks for each listed variable, one at a time.", { usage: "Prompt variable[,variable…]" }),
   io("ClrHome", "Clears the home screen."),
