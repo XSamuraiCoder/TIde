@@ -1,6 +1,5 @@
-// main.ts — modified for C support: imports C_CATALOG instead of C_SNIPPETS,
-// and catalogGroups() returns the full CE library catalog for C tabs.
-// Changes are marked with "← CHANGED".
+// main.ts — C and py2ez80 support: catalogGroups() returns the CE library catalog for C tabs
+// and the py2ez80 catalog for Python tabs. Changes are marked with "← CHANGED".
 import * as monaco from "monaco-editor/editor/editor.api.js";
 // The bare API ships no editor widgets, so the full entry is imported for its side effects.
 import "monaco-editor"; // full entry: registers suggest, hover, parameter hints, folding and marker navigation
@@ -8,6 +7,7 @@ import editorWorker from "monaco-editor/editor/editor.worker.js?worker";
 import "./style.css";
 import { CATALOG, languageFor, registerTiBasic } from "./language";
 import { C_CATALOG, registerC } from "./c-support";                        // ← CHANGED: full catalog, not just snippets
+import { PY_CATALOG, registerPy2ez80, watchPython } from "./py2ez80-support"; // ← CHANGED: py2ez80 support
 import { registerIntellisense, watchModel } from "./intellisense";
 import { tokenize } from "./build";
 import { exportProgram } from "./export";
@@ -62,6 +62,7 @@ function h<K extends keyof HTMLElementTagNameMap>(
 
 registerTiBasic();
 registerC();
+registerPy2ez80();                                                        // ← CHANGED
 registerIntellisense();
 
 // The calculator shows a ":" before every line. It is a gutter, not file content, so saved programs stay clean.
@@ -133,7 +134,10 @@ function addDoc(init: Pick<Doc, "id" | "label" | "hint" | "language" | "write"> 
   docs.set(doc.id, doc);
   model.onDidChangeContent(refresh);
   if (doc.language === "tibasic") watchModel(model);
-  else model.updateOptions({ tabSize: 4, insertSpaces: true });
+  else {                                                                  // ← CHANGED: Python tabs get py2ez80 checks
+    model.updateOptions({ tabSize: 4, insertSpaces: true });
+    if (doc.language === "python") watchPython(model);
+  }
   return doc;
 }
 
@@ -381,10 +385,11 @@ function markOverflow() {
 }
 
 /** What the catalog shows depends on the toolchain of the active tab. */
-function catalogGroups() {                                             // ← CHANGED: C tabs get the full CE library catalog
+function catalogGroups() {                                             // ← CHANGED: C and Python tabs get their own catalogs
   const doc = activeDoc();
   if (!doc || doc.language === "tibasic") return CATALOG;
   if (doc.language === "c") return C_CATALOG;
+  if (doc.language === "python") return PY_CATALOG;                       // ← CHANGED
   return [];
 }
 
@@ -443,8 +448,8 @@ function applyEditorMode() {
 
 function renderProblems() {
   const doc = activeDoc();
-  // Only TI-BASIC has diagnostics; showing "No problems" for C would be a claim nothing is checking.
-  els.problems.hidden = !doc || doc.language !== "tibasic";
+  // Only TI-BASIC and Python (py2ez80) have diagnostics; "No problems" for C would be a claim nothing is checking.
+  els.problems.hidden = !doc || (doc.language !== "tibasic" && doc.language !== "python"); // ← CHANGED
   if (els.problems.hidden || !doc) return;
   const markers = monaco.editor.getModelMarkers({ resource: doc.model.uri });
   const errors = markers.filter(m => m.severity === monaco.MarkerSeverity.Error).length;

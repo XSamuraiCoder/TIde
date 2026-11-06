@@ -70,11 +70,11 @@ jobs:
             args: ""
             target: ""
           - name: MacOS (Apple Silicon)
-            os: macos-latest
+            os: macos-15
             args: --target aarch64-apple-darwin
             target: aarch64-apple-darwin
           - name: MacOS (Intel)
-            os: macos-latest
+            os: macos-15
             args: --target x86_64-apple-darwin
             target: x86_64-apple-darwin
 
