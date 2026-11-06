@@ -84,3 +84,7 @@ Run the backend tests from `src-tauri`:
 ```bash
 cargo test --lib
 ```
+
+## Credits
+
+Claude was used to debug and fix errors in this program.
