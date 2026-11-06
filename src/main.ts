@@ -1,10 +1,13 @@
+// main.ts — modified for C support: imports C_CATALOG instead of C_SNIPPETS,
+// and catalogGroups() returns the full CE library catalog for C tabs.
+// Changes are marked with "← CHANGED".
 import * as monaco from "monaco-editor/editor/editor.api.js";
 // The bare API ships no editor widgets, so the full entry is imported for its side effects.
 import "monaco-editor"; // full entry: registers suggest, hover, parameter hints, folding and marker navigation
 import editorWorker from "monaco-editor/editor/editor.worker.js?worker";
 import "./style.css";
 import { CATALOG, languageFor, registerTiBasic } from "./language";
-import { C_SNIPPETS, registerC } from "./c-support";
+import { C_CATALOG, registerC } from "./c-support";                        // ← CHANGED: full catalog, not just snippets
 import { registerIntellisense, watchModel } from "./intellisense";
 import { tokenize } from "./build";
 import { exportProgram } from "./export";
@@ -378,15 +381,10 @@ function markOverflow() {
 }
 
 /** What the catalog shows depends on the toolchain of the active tab. */
-function catalogGroups() {
+function catalogGroups() {                                             // ← CHANGED: C tabs get the full CE library catalog
   const doc = activeDoc();
   if (!doc || doc.language === "tibasic") return CATALOG;
-  if (doc.language === "c") {
-    return [{
-      group: "C snippets",
-      entries: C_SNIPPETS.map(s => ({ name: s.label, insert: s.body, hint: s.doc })),
-    }];
-  }
+  if (doc.language === "c") return C_CATALOG;
   return [];
 }
 
