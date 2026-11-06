@@ -91,14 +91,42 @@ jobs:
           git tag -f latest "${{ github.sha }}"
           git push -f origin refs/tags/latest
 
-      - name: Recreate the latest release
+      - name: Collect installer files
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          assets=(release-assets/*)
+          if [ ${#assets[@]} -eq 0 ]; then
+            echo "::error::No installer files were downloaded. Check that the build jobs uploaded their artifacts."
+            exit 1
+          fi
+          printf '%s\n' "${assets[@]}" > assets.txt
+          cat assets.txt
+
+      - name: Publish or update the latest release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
         run: |
-          gh release delete latest --repo "${{ github.repository }}" --yes || true
-          gh release create latest \
-            release-assets/* \
-            --repo "${{ github.repository }}" \
-            --title "Latest Build" \
-            --notes "Latest automated build from commit ${{ github.sha }}" \
-            --latest
+          set -euo pipefail
+          mapfile -t assets < assets.txt
+
+          # The tag is moved to the built commit first; gh release create reuses it.
+          git tag -f latest "$SHA"
+          git push -f origin refs/tags/latest
+
+          if gh release view latest --repo "$REPO" >/dev/null 2>&1; then
+            echo "Release 'latest' exists — uploading assets over it."
+            gh release upload latest "${assets[@]}" --clobber --repo "$REPO"
+            gh release edit latest --repo "$REPO" \
+              --title "Latest Build" \
+              --notes "Latest automated build from commit $SHA" --latest
+          else
+            echo "Release 'latest' not found — creating it."
+            gh release create latest "${assets[@]}" \
+              --repo "$REPO" \
+              --title "Latest Build" \
+              --notes "Latest automated build from commit $SHA" \
+              --latest
+          fi
