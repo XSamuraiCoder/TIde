@@ -1,17 +1,46 @@
 import * as monaco from "monaco-editor/editor/editor.api.js";
-import { COMMANDS, bare, wordsOf, type Group } from "./commands";
+import { BLOCKS, COMMANDS, bare, wordsOf, type Group } from "./commands";
+import { TOKEN_TABLE } from "./tokens";
 
 const COMMAND_SET = new Set(COMMANDS.map(c => bare(c.name)));
 
 const GROUPS: Group[] = ["Control", "Screen and input", "Drawing", "Math"];
-export const CATALOG = GROUPS.map(group => ({
-  group,
-  entries: COMMANDS.filter(c => c.group === group).map(c => ({
-    name: c.name,
-    insert: c.name.endsWith("(") || !c.usage ? c.name : c.name + " ",
-    hint: c.doc.split(". ")[0],
+
+// Characters a keyboard can't type directly.
+const SYMBOLS: [string, string][] = [
+  ["→", "Store into a variable"], ["≠", "Not equal"], ["≤", "Less or equal"], ["≥", "Greater or equal"],
+  ["√(", "Square root"], ["π", "Pi"], ["θ", "Theta variable"], ["²", "Squared"], ["⁻¹", "Inverse"], ["ᴇ", "Times ten to the power"],
+];
+
+// Commands that take no arguments, so the token table's "(" or trailing space can't identify them.
+const PLAIN_COMMANDS = `prgm Ans rand getDate getTime startTmr ClrAllLists ClrTable DispTable AxesOff GridOff LabelOn LabelOff
+ExprOn ExprOff Radian Degree Normal Sci Eng Float Full Func Param Polar Seq ZStandard ZoomFit ZSquare ZTrig ZDecimal`.split(/\s+/);
+
+/** Everything else the tokenizer accepts: skips non-ASCII spellings and the arc…/^ aliases of the same token. */
+function otherCommands() {
+  const listed = new Set(COMMANDS.map(c => bare(c.name)));
+  const names = TOKEN_TABLE.map(([name]) => name)
+    .filter(n => /^[A-Za-z0-9][\x20-\x7e]*(?:\(| )$/.test(n) && !/^arc|\^/.test(n));
+  const seen = new Set<string>();
+  return [...names, ...PLAIN_COMMANDS]
+    .filter(n => { const k = bare(n.trimEnd()); return !listed.has(k) && !seen.has(k) && !!seen.add(k); })
+    .sort((a, b) => a.localeCompare(b))
+    .map(n => ({ name: n.trimEnd(), insert: n, hint: "" }));
+}
+
+export const CATALOG = [
+  { group: "Blocks", entries: BLOCKS.map(b => ({ name: b.label, insert: b.snippet, hint: b.doc })) },
+  ...GROUPS.map(group => ({
+    group,
+    entries: COMMANDS.filter(c => c.group === group).map(c => ({
+      name: c.name,
+      insert: c.name.endsWith("(") || !c.usage ? c.name : c.name + " ",
+      hint: c.doc.split(". ")[0],
+    })),
   })),
-}));
+  { group: "Symbols", entries: SYMBOLS.map(([name, hint]) => ({ name, insert: name, hint })) },
+  { group: "All other commands", entries: otherCommands() },
+];
 
 /** Rough token-size estimate: commands/functions ≈ 1 byte (some are 2), everything else 1 byte per char, 1 per line break. */
 export function estimateBytes(source: string): number {

@@ -9,7 +9,7 @@ import * as monaco from "monaco-editor/editor/editor.api.js";
 
 export interface Snippet { label: string; doc: string; body: string }
 export interface LibFn { name: string; sig: string; doc: string; insert: string }
-export interface CatalogEntry { name: string; insert: string; hint: string }
+export interface CatalogEntry { name: string; insert: string; hint: string; detail?: string }
 
 export const C_SNIPPETS: Snippet[] = [
   { label: "main", doc: "Program entry point.", body: "#include <stdint.h>\n\nint main(void) {\n\t$0\n\treturn 0;\n}" },
@@ -400,7 +400,7 @@ export const C_CATALOG: { group: string; entries: CatalogEntry[] }[] = [
   { group: "Snippets", entries: C_SNIPPETS.map(s => ({ name: s.label, insert: s.body, hint: s.doc })) },
   ...C_LIBRARY.map(g => ({
     group: g.group,
-    entries: g.entries.map(e => ({ name: e.name, insert: e.insert, hint: `${e.sig} — ${e.doc}` })),
+    entries: g.entries.map(e => ({ name: e.name, insert: e.insert, hint: e.doc, detail: e.sig })),
   })),
 ];
 

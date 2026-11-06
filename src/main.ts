@@ -1,5 +1,3 @@
-// main.ts — C and py2ez80 support: catalogGroups() returns the CE library catalog for C tabs
-// and the py2ez80 catalog for Python tabs. Changes are marked with "← CHANGED".
 import * as monaco from "monaco-editor/editor/editor.api.js";
 // The bare API ships no editor widgets, so the full entry is imported for its side effects.
 import "monaco-editor"; // full entry: registers suggest, hover, parameter hints, folding and marker navigation
@@ -68,6 +66,7 @@ registerIntellisense();
 // The calculator shows a ":" before every line. It is a gutter, not file content, so saved programs stay clean.
 const GUTTER_PREF = "tide-pref-numbers"; // must not start with "tide:" or the browser store lists it as a program
 const PROJECT_PREF = "tide-pref-project"; // same rule
+const BUILD_PREF = "tide-pref-builds"; // same rule
 let showNumbers = false;
 try { showNumbers = localStorage.getItem(GUTTER_PREF) === "1"; } catch { /* storage unavailable */ }
 
@@ -121,6 +120,7 @@ const fileId = (path: string) => `file:${path}`;
 const baseName = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 const isDirty = (d: Doc) => d.model.getAlternativeVersionId() !== d.savedVersion;
 const activeDoc = () => (active ? docs.get(active) : undefined);
+const mod = (e: KeyboardEvent) => e.ctrlKey || e.metaKey;
 const isBasic = () => (activeDoc()?.language ?? "tibasic") === "tibasic";
 
 // ── Actions ────────────────────────────────────────────────────────────────
@@ -134,7 +134,7 @@ function addDoc(init: Pick<Doc, "id" | "label" | "hint" | "language" | "write"> 
   docs.set(doc.id, doc);
   model.onDidChangeContent(refresh);
   if (doc.language === "tibasic") watchModel(model);
-  else {                                                                  // ← CHANGED: Python tabs get py2ez80 checks
+  else {
     model.updateOptions({ tabSize: 4, insertSpaces: true });
     if (doc.language === "python") watchPython(model);
   }
@@ -207,8 +207,18 @@ async function saveActive() {
   refresh();
 }
 
-/** Tokenizes the active TI-BASIC program and writes a real .8xp the calculator accepts. */
-async function exportActive() {
+/** Where each program was last built, so a rebuild can skip the save dialog. */
+function buildPaths(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(BUILD_PREF) ?? "{}"); } catch { return {}; }
+}
+function rememberBuild(name: string, path: string | null) {
+  const paths = buildPaths();
+  if (path) paths[name] = path; else delete paths[name];
+  try { localStorage.setItem(BUILD_PREF, JSON.stringify(paths)); } catch { /* storage unavailable */ }
+}
+
+/** Tokenizes the active TI-BASIC program and writes a real .8xp the calculator accepts. Asks where only the first time, or when `pick` is set. */
+async function exportActive(pick = false) {
   const doc = activeDoc();
   if (!doc) return setMessage("Nothing to build.");
   if (doc.language !== "tibasic") return setMessage("Only TI-BASIC programs build to .8xp.");
@@ -216,11 +226,12 @@ async function exportActive() {
   const { bytes, errors } = tokenize(doc.model.getValue());
   let path: string | null;
   try {
-    path = await exportProgram(doc.label, bytes);
+    path = await exportProgram(doc.label, bytes, pick ? undefined : buildPaths()[doc.label]);
   } catch (err) {
     return setMessage(`Could not build ${doc.label}: ${err}`);
   }
   if (!path) return; // cancelled the save dialog
+  if (fs.available) rememberBuild(doc.label, path);
   setMessage(errors.length
     ? `Built ${path} — ${errors.length} character${errors.length === 1 ? "" : "s"} had no token and were skipped.`
     : `Built ${path}`);
@@ -258,6 +269,7 @@ async function deleteProgram(name: string) {
   }
   names = names.filter(n => n !== name);
   buildErrors.delete(name);
+  rememberBuild(name, null);
   const doc = docs.get(progId(name));
   if (doc) { doc.savedVersion = doc.model.getAlternativeVersionId(); closeTab(doc.id); }
   setMessage(`Deleted ${name}`);
@@ -303,7 +315,7 @@ async function toggleDir(entry: Entry) {
   renderTree();
 }
 
-function setMessage(text: string) { els.msg.textContent = text; }
+function setMessage(text: string) { els.msg.textContent = text; els.msg.title = text; }
 
 // ── Rendering ──────────────────────────────────────────────────────────────
 
@@ -325,7 +337,7 @@ function renderList() {
     row.onkeydown = e => { if (e.key === "Enter") void openProgram(n); };
     return row;
   }));
-  els.listEmpty.hidden = shown.length > 0 || !normalizeName(query);
+  els.listEmpty.hidden = names.length > 0 || !!query;
 }
 
 function treeRows(path: string, depth: number, out: HTMLElement[]) {
@@ -385,41 +397,59 @@ function markOverflow() {
 }
 
 /** What the catalog shows depends on the toolchain of the active tab. */
-function catalogGroups() {                                             // ← CHANGED: C and Python tabs get their own catalogs
+function catalogGroups(): { group: string; entries: { name: string; insert: string; hint: string; detail?: string }[] }[] {
   const doc = activeDoc();
   if (!doc || doc.language === "tibasic") return CATALOG;
-  if (doc.language === "c") return C_CATALOG;
-  if (doc.language === "python") return PY_CATALOG;                       // ← CHANGED
+  if (doc.language === "c" || doc.language === "cpp") return C_CATALOG; // the CE toolchain builds C++ too
+  if (doc.language === "python") return PY_CATALOG;
   return [];
 }
 
 function renderCatalog() {
   const q = els.catFind.value.trim().toLowerCase();
-  const nodes = catalogGroups().flatMap(group => {
-    const entries = group.entries.filter(e => !q || `${e.name} ${e.hint}`.toLowerCase().includes(q));
+  const groups = catalogGroups();
+  const nodes = groups.flatMap(group => {
+    const entries = group.entries.filter(e => !q || `${e.name} ${e.hint} ${e.detail ?? ""}`.toLowerCase().includes(q));
     if (!entries.length) return [];
     return [
       h("h3", {}, group.group),
-      ...entries.map(e => h("button", { className: "item", type: "button", title: e.hint, onclick: () => insertSnippet(e.insert, e.insert.includes("${")) },
-        h("code", {}, e.name), h("span", {}, e.hint))),
+      ...entries.map(e => {
+        const hint = e.hint.replace(/`/g, "");
+        return h("button", { className: "item", type: "button", title: [e.detail, hint].filter(Boolean).join("\n"), onclick: () => insertSnippet(e.insert) },
+          h("code", {}, e.name), ...(hint ? [h("span", {}, hint)] : []));
+      }),
     ];
   });
-  els.catalog.replaceChildren(...(nodes.length ? nodes : [h("p", { className: "hint" }, "Nothing matches.")]));
+  const none = groups.length ? "Nothing matches." : "No catalog for this file type.";
+  els.catalog.replaceChildren(...(nodes.length ? nodes : [h("p", { className: "hint" }, none)]));
 }
 
 /** Inserts catalog text at the cursor. Monaco snippet syntax ($0, ${1:…}) expands into tab stops. */
-function insertSnippet(text: string, asSnippet = false) {
+function insertSnippet(text: string) {
   if (!activeDoc()) { setMessage("Open a program to insert commands."); return; }
-  const sel = editor.getSelection();
-  if (!sel) return;
-  if (asSnippet) {
-    editor.trigger("catalog", "editor.action.insertSnippet", { snippet: text });
-  } else {
-    const end = new monaco.Selection(sel.startLineNumber, sel.startColumn + text.length, sel.startLineNumber, sel.startColumn + text.length);
-    editor.executeEdits("catalog", [{ range: sel, text, forceMoveMarkers: true }], [end]);
-  }
   editor.focus();
-  if (!asSnippet && text.endsWith("(")) editor.trigger("catalog", "editor.action.triggerParameterHints", null);
+  // Standalone Monaco has no "editor.action.insertSnippet" command; the snippet controller is the way in.
+  editor.getContribution<monaco.editor.IEditorContribution & { insert(template: string): void }>("snippetController2")?.insert(text);
+  if (text.endsWith("(")) editor.trigger("catalog", "editor.action.triggerParameterHints", null);
+}
+
+/** Arrow keys walk the catalog; Up from the first item goes back to the search box. */
+function catalogKeys(e: KeyboardEvent) {
+  if (e.key === "Escape") { e.preventDefault(); editor.focus(); return; }
+  const items = [...els.catalog.querySelectorAll<HTMLButtonElement>(".item")];
+  if (e.key === "Enter" && e.target === els.catFind) {
+    e.preventDefault();
+    // Best match, not first listed: "sin(" must pick sin( over asin(.
+    const q = els.catFind.value.trim().toLowerCase();
+    const named = (test: (name: string) => boolean) => items.find(i => test(i.querySelector("code")!.textContent!.toLowerCase()));
+    (named(n => n === q) ?? named(n => n.startsWith(q)) ?? items[0])?.click();
+    return;
+  }
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  e.preventDefault();
+  const next = items.indexOf(e.target as HTMLButtonElement) + (e.key === "ArrowDown" ? 1 : -1);
+  if (next < 0) els.catFind.focus();
+  else items[Math.min(next, items.length - 1)]?.focus();
 }
 
 const PANES = ["files", "catalog"] as const;
@@ -442,7 +472,7 @@ function applyEditorMode() {
   els.gutter.hidden = !basic;
   els.gutter.textContent = showNumbers ? "Gutter: line numbers" : "Gutter: \":\"";
   els.gutter.setAttribute("aria-pressed", String(showNumbers));
-  els.exportBtn.hidden = !basic;
+  els.exportBtn.hidden = !basic || !activeDoc();
   renderCatalog(); // the catalog follows the toolchain of the active tab
 }
 
@@ -493,6 +523,8 @@ function refresh() {
 editor.onDidChangeCursorPosition(renderStatus);
 els.find.addEventListener("input", renderList);
 els.catFind.addEventListener("input", renderCatalog);
+els.catFind.addEventListener("keydown", catalogKeys);
+els.catalog.addEventListener("keydown", catalogKeys);
 monaco.editor.onDidChangeMarkers(renderProblems);
 els.problems.addEventListener("click", () => { editor.focus(); void editor.getAction("editor.action.marker.next")?.run(); });
 els.exportBtn.addEventListener("click", () => void exportActive());
@@ -506,19 +538,25 @@ els.gutter.addEventListener("click", () => {
 });
 els.find.addEventListener("keydown", e => {
   if (e.key !== "Enter") return;
+  // Enter opens the first match, so finding never makes a near-duplicate. Ctrl+Enter always creates.
+  const query = els.find.value.toUpperCase();
+  const match = query && !mod(e) ? names.find(n => n.includes(query)) : undefined;
   const name = normalizeName(els.find.value);
-  if (!name) return setMessage("Names start with a letter and use only letters and digits.");
+  if (!match && !name) return setMessage("Names start with a letter and use only letters and digits.");
   els.find.value = "";
-  void createProgram(name);
+  void (match ? openProgram(match) : createProgram(name));
 });
 
-const mod = (e: KeyboardEvent) => e.ctrlKey || e.metaKey;
 window.addEventListener("keydown", e => {
-  if (mod(e) && e.shiftKey && e.key.toLowerCase() === "o") { e.preventDefault(); void openFolder(); }
-  else if (mod(e) && e.key === "s") { e.preventDefault(); void saveActive(); }
-  else if (mod(e) && e.key === "e") { e.preventDefault(); void exportActive(); }
-  else if (mod(e) && e.key === "w" && active) { e.preventDefault(); closeTab(active); }
-  else if (mod(e) && e.key === "n") { e.preventDefault(); showPane("files"); els.find.focus(); }
+  if (!mod(e)) return;
+  const key = e.key.toLowerCase(); // Caps Lock and Shift report capitals
+  if (e.shiftKey && key === "o") { e.preventDefault(); void openFolder(); }
+  else if (e.shiftKey && key === "e") { e.preventDefault(); void exportActive(true); }
+  else if (key === "s") { e.preventDefault(); void saveActive(); }
+  else if (key === "e") { e.preventDefault(); void exportActive(); }
+  else if (key === "w" && active) { e.preventDefault(); closeTab(active); }
+  else if (key === "n") { e.preventDefault(); showPane("files"); els.find.focus(); }
+  else if (key === "j") { e.preventDefault(); showPane("catalog"); els.catFind.select(); }
 });
 
 store.list().then(list => { names = list; refresh(); checkPrograms(); }).catch(err => setMessage(`Could not load programs: ${err}`));

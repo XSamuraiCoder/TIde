@@ -7,7 +7,7 @@ import { Severity, type Marker } from "./analysis";
 
 export interface PyFn { name: string; sig: string; doc: string; insert: string; params: string[] }
 export interface PySnippet { label: string; doc: string; body: string }
-export interface CatalogEntry { name: string; insert: string; hint: string }
+export interface CatalogEntry { name: string; insert: string; hint: string; detail?: string }
 
 const SOURCE = "py2ez80";
 
@@ -103,7 +103,7 @@ export const PY_CATALOG: { group: string; entries: CatalogEntry[] }[] = [
   { group: "Snippets", entries: PY_SNIPPETS.map(s => ({ name: s.label, insert: s.body, hint: s.doc })) },
   ...PY_LIBRARY.map(g => ({
     group: g.group,
-    entries: g.entries.map(e => ({ name: e.name, insert: e.insert, hint: `${e.sig} — ${e.doc}` })),
+    entries: g.entries.map(e => ({ name: e.name, insert: e.insert, hint: e.doc, detail: e.sig })),
   })),
 ];
 
