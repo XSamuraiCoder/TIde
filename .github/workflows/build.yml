@@ -36,8 +36,11 @@ jobs:
 
           if gh release view latest --repo "$REPO" >/dev/null 2>&1; then
             # Wipe old assets so the release always mirrors exactly the newest build.
-            gh release view latest --repo "$REPO" --json assets --jq '.[].name' \
-              | xargs -r -n1 gh release delete-asset latest --repo "$REPO" --yes
+            gh release view latest --repo "$REPO" --json assets --jq '.assets[].name' \
+              | while IFS= read -r asset; do
+                  [ -z "$asset" ] && continue
+                  gh release delete-asset latest "$asset" --repo "$REPO" --yes
+                done
             gh release edit latest --repo "$REPO" \
               --title "Latest Build" \
               --notes "Latest automated build from commit $SHA" \
