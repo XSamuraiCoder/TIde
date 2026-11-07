@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="1024" height="1024">
+  <defs>
+    <!-- Wave Gradients -->
+    <linearGradient id="waveTop" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#0EA5E9" />
+    </linearGradient>
+
+    <linearGradient id="waveMid" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0284C7" />
+      <stop offset="100%" stop-color="#2563EB" />
+    </linearGradient>
+
+    <linearGradient id="waveBot" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1D4ED8" />
+      <stop offset="100%" stop-color="#1E40AF" />
+    </linearGradient>
+  </defs>
+
+  <!-- Wave 1 (Top) -->
+  <path d="M 8 23 C 18 17, 26 29, 36 23 C 44 18, 50 25, 56 21" fill="none" stroke="url(#waveTop)" stroke-width="5.5" stroke-linecap="round" />
+
+  <!-- Wave 2 (Middle) -->
+  <path d="M 8 33 C 18 27, 26 39, 36 33 C 44 28, 50 35, 56 31" fill="none" stroke="url(#waveMid)" stroke-width="5.5" stroke-linecap="round" />
+
+  <!-- Wave 3 (Bottom) -->
+  <path d="M 8 43 C 18 37, 26 49, 36 43 C 44 38, 50 45, 56 41" fill="none" stroke="url(#waveBot)" stroke-width="5.5" stroke-linecap="round" />
+</svg>

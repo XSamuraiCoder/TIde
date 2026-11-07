@@ -1,8 +1,11 @@
-# Tide
+# TIde
 
 A small desktop IDE for TI-84 calculators, built with Tauri and the Monaco editor. Write TI-BASIC and build real `.8xp` files, or work on CE C and py2ez80 projects.
 
-Installers for Windows, Linux and macOS are published on the `latest` release by the build workflow.
+Installers for Windows, Linux and macOS are published on the `latest` release by the build workflow, along with two versions that don't need installing:
+
+- **Windows:** `TIde_<version>_x64-portable.exe` runs on its own. It needs WebView2, which Windows 11 already includes, and it still saves programs in your user folder rather than next to the exe.
+- **macOS:** `TIde_<version>_aarch64.app.zip` (Apple Silicon) or `TIde_<version>_x64.app.zip` (Intel) contains `TIde.app`. The app isn't signed, so if macOS says it is damaged, run `xattr -cr TIde.app` once.
 
 ## TI-BASIC
 

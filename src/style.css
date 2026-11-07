@@ -1,4 +1,4 @@
-/* Tide — palette is taken from the hardware: grey body, off-white LCD, ink-black text,
+/* TIde — palette is taken from the hardware: grey body, off-white LCD, ink-black text,
    one blue (the 2nd key) for anything interactive. */
 :root {
   --body: #d8dbde;

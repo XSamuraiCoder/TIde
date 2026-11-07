@@ -143,7 +143,7 @@ export function watchModel(model: monaco.editor.ITextModel): void {
       message: `"${e.text}" has no token on this calculator — it will be skipped in the .8xp.`,
       startLineNumber: e.line, startColumn: e.column,
       endLineNumber: e.line, endColumn: e.column + e.text.length,
-      source: "tide",
+      source: "TIde",
     }));
     monaco.editor.setModelMarkers(model, "tide", [...markers, ...noToken]);
   };

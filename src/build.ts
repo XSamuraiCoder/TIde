@@ -68,7 +68,7 @@ export function tokenize(source: string, target: Target = getTarget()): Tokenize
 }
 
 /** A TI-83+ family .8xp file (program, unprotected) holding the given tokens. */
-export function make8xp(name: string, tokens: number[], comment = "Created with TIDE"): Uint8Array {
+export function make8xp(name: string, tokens: number[], comment = "Created with TIde"): Uint8Array {
   const u16 = (n: number) => [n & 0xff, (n >> 8) & 0xff];
   const padded = (s: string, size: number) => {
     const out = new Array<number>(size).fill(0);

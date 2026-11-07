@@ -85,7 +85,7 @@ export function analyze(lines: string[]): Analysis {
   const stack: { kind: string; line: number; column: number; end: number }[] = [];
 
   const report = (severity: number, line: number, column: number, end: number, message: string) =>
-    markers.push({ severity, message, startLineNumber: line, startColumn: column, endLineNumber: line, endColumn: end, source: "tide" });
+    markers.push({ severity, message, startLineNumber: line, startColumn: column, endLineNumber: line, endColumn: end, source: "TIde" });
 
   lines.forEach((raw, i) => {
     const line = i + 1;
