@@ -32,13 +32,22 @@ Opening a folder with a `Makefile`, `makefile` or `GNUmakefile` in its root trea
 
 Building needs the [CE C toolchain](https://github.com/CE-Programming/toolchain) with `make` on your `PATH`. The toolchain only targets the CE.
 
-## Catalog
+## Docs
 
-The **Catalog** tab lists what you can insert for the active file. Click an entry, or search and press Enter, to add it at the cursor.
+The **Docs** view in the activity bar lists everything you can use in the active file. Click an entry to open its full page (usage, description and parameters) in the editor area, or press Enter or **+** to insert it at the cursor. Searching and pressing Enter inserts the best match.
 
-- **TI-BASIC:** block templates, commands and symbols that are hard to type, such as `→` and `≠`
+- **TI-BASIC:** block templates, every command grouped by topic, and symbols that are hard to type, such as `→` and `≠`
 - **C and C++:** snippets and the CE libraries
 - **Python:** snippets and the [py2ez80](https://github.com/Voblit/py2ez80) modules
+- **eZ80 assembly** (`.asm`, `.s`, `.src`, `.inc`, `.z80`, `.ez80`): snippets, the full instruction set, fasmg directives, and common TI-OS routines and addresses. Assembly files also get highlighting, completions and hover docs.
+
+Press F1 on an entry to open its page, and Esc to close the page.
+
+## Updates
+
+The desktop app checks the `latest` release when it starts. If there is a newer build it offers the update, with the release notes from [RELEASE_NOTES.md](RELEASE_NOTES.md); click the version in the status bar to check at any time. Edit `RELEASE_NOTES.md` before pushing to change what the next release says. The portable exe and the zipped `.app` don't update themselves.
+
+Each build workflow run is versioned `major.minor.<run number>` and its update files are signed. The workflow needs the signing key as the `TAURI_SIGNING_PRIVATE_KEY` repository secret (and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if the key has one). The public key is in `tauri.conf.json`.
 
 ## Shortcuts
 
@@ -49,7 +58,9 @@ Use Cmd instead of Ctrl on macOS.
 | `Ctrl+S` | Save |
 | `Ctrl+E` | Build |
 | `Ctrl+Shift+E` | Build a TI-BASIC program to a new location |
-| `Ctrl+J` | Open the catalog |
+| `Ctrl+J` | Search the docs |
+| `Ctrl+Shift+J` | Open or close the docs page |
+| `Ctrl+B` | Show or hide the side bar |
 | `Ctrl+N` | Find or create a program |
 | `Ctrl+Shift+O` | Open a folder |
 | `Ctrl+W` | Close the tab |

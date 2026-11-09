@@ -18,9 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       started: ${{ steps.start.outputs.started }}
+      version: ${{ steps.start.outputs.version }}
 
     steps:
-      - name: Note the start time, and create the release if it doesn't exist
+      - uses: actions/checkout@v4
+
+      - name: Note the start time and version, and create the release if it doesn't exist
         id: start
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -29,6 +32,10 @@ jobs:
         run: |
           set -euo pipefail
           echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          # Every build gets a higher version (major.minor from tauri.conf.json, then the run number),
+          # so the updater can tell it is newer.
+          base=$(jq -r .version src-tauri/tauri.conf.json)
+          echo "version=${base%.*}.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           if ! gh release view latest --repo "$REPO" >/dev/null 2>&1; then
             gh release create latest --repo "$REPO" \
               --title "Latest Build" \
@@ -88,10 +95,19 @@ jobs:
 
       - run: npm ci
 
+      - name: Set this build's version and turn on signed update files
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: printf '{"version":"%s","bundle":{"createUpdaterArtifacts":true}}' "$VERSION" > src-tauri/tauri.ci.conf.json
+
       - name: Build app
         uses: tauri-apps/tauri-action@v0
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} --config src-tauri/tauri.ci.conf.json
 
       - name: Upload installers to the latest release
         shell: bash   # the default on Windows is PowerShell
@@ -99,10 +115,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           TARGET: ${{ matrix.target }}
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -euo pipefail
           shopt -s nullglob
-          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          version="$VERSION"
           extras=src-tauri/target/release-extras
           mkdir -p "$extras"
 
@@ -117,8 +134,11 @@ jobs:
               aarch64-*) arch=aarch64 ;;
               *) arch=x64 ;;
             esac
-            ditto -c -k --keepParent "src-tauri/target/$TARGET/release/bundle/macos/TIde.app" \
-              "$extras/TIde_${version}_${arch}.app.zip"
+            bundle="src-tauri/target/$TARGET/release/bundle/macos"
+            ditto -c -k --keepParent "$bundle/TIde.app" "$extras/TIde_${version}_${arch}.app.zip"
+            # The updater's archive has the same name on both Macs, so give it the version and architecture.
+            cp "$bundle/TIde.app.tar.gz" "$extras/TIde_${version}_${arch}.app.tar.gz"
+            cp "$bundle/TIde.app.tar.gz.sig" "$extras/TIde_${version}_${arch}.app.tar.gz.sig"
           fi
 
           files=(
@@ -128,6 +148,7 @@ jobs:
             src-tauri/target/release/bundle/rpm/*.rpm
             src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/*/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/*/*.sig
             "$extras"/*
           )
           if [ ${#files[@]} -eq 0 ]; then
@@ -155,6 +176,7 @@ jobs:
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
           STARTED: ${{ needs.prepare.outputs.started }}
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -162,10 +184,31 @@ jobs:
           git tag -f latest "$SHA"
           git push -f origin refs/tags/latest
 
-          gh release edit latest --repo "$REPO" \
-            --title "Latest Build" \
-            --notes "Latest automated build from commit $SHA" \
-            --latest
+          # The release text is RELEASE_NOTES.md, which the app also shows when it offers the update.
+          printf '%s\n\n---\nTIde %s, built from commit %s.\n' "$(cat RELEASE_NOTES.md)" "$VERSION" "$SHA" > body.md
+          gh release edit latest --repo "$REPO" --title "TIde $VERSION" --notes-file body.md --latest
+
+          # latest.json tells installed apps about this version: one signed download per platform.
+          mkdir -p sigs
+          gh release download latest --repo "$REPO" --pattern "*_${VERSION}_*.sig" --dir sigs
+          node -e '
+            const fs = require("fs");
+            const kinds = [[/_x64-setup\.exe\.sig$/, "windows-x86_64"], [/_aarch64\.app\.tar\.gz\.sig$/, "darwin-aarch64"],
+                           [/_x64\.app\.tar\.gz\.sig$/, "darwin-x86_64"], [/_amd64\.AppImage\.sig$/, "linux-x86_64"]];
+            const platforms = {};
+            for (const file of fs.readdirSync("sigs")) {
+              const kind = kinds.find(([re]) => re.test(file));
+              if (!kind) continue;
+              platforms[kind[1]] = {
+                signature: fs.readFileSync("sigs/" + file, "utf8").trim(),
+                url: `https://github.com/${process.env.REPO}/releases/download/latest/${file.slice(0, -4)}`,
+              };
+            }
+            if (Object.keys(platforms).length < kinds.length) console.log("::warning::latest.json covers only " + Object.keys(platforms).join(", "));
+            const notes = fs.readFileSync("RELEASE_NOTES.md", "utf8").trim();
+            fs.writeFileSync("latest.json", JSON.stringify({ version: process.env.VERSION, notes, pub_date: new Date().toISOString(), platforms }, null, 2));
+          '
+          gh release upload latest latest.json --repo "$REPO" --clobber
 
           # Anything not uploaded by this run is left over from an older build.
           gh release view latest --repo "$REPO" --json assets \

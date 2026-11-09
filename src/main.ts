@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import * as monaco from "monaco-editor/editor/editor.api.js";
 // The bare API ships no editor widgets, so the full entry is imported for its side effects.
 import "monaco-editor"; // full entry: registers suggest, hover, parameter hints, folding and marker navigation
@@ -6,6 +7,9 @@ import { languageFor, registerTiBasic, tiCatalog } from "./language";
 import { TARGETS, getTarget, onTargetChange, setTarget } from "./target";
 import { C_CATALOG, registerC } from "./c-support";                        // ← CHANGED: full catalog, not just snippets
 import { PY_CATALOG, registerPy2ez80, watchPython } from "./py2ez80-support"; // ← CHANGED: py2ez80 support
+import { ASM_CATALOG, ASM_LANG, registerAsm } from "./asm-support";
+import { appVersion, checkForUpdate } from "./updater";
+import { DOCS, createDocs, type DocLangId } from "./docs";
 import { registerIntellisense, watchModel } from "./intellisense";
 import { tokenize } from "./build";
 import { exportProgram } from "./export";
@@ -39,8 +43,10 @@ const els = {
   gutter: $<HTMLButtonElement>("gutter"),
   target: $<HTMLButtonElement>("target"),
   problems: $<HTMLButtonElement>("problems"),
-  catFind: $<HTMLInputElement>("cat-find"),
-  catalog: $("catalog"),
+  docFind: $<HTMLInputElement>("doc-find"),
+  docList: $("doc-list"),
+  docsLang: $("docs-lang"),
+  project: $("status-project"),
   openFolder: $<HTMLButtonElement>("open-folder"),
   projectName: $("project-name"),
   tree: $("tree"),
@@ -59,9 +65,12 @@ function h<K extends keyof HTMLElementTagNameMap>(
 
 // ── State ──────────────────────────────────────────────────────────────────
 
+const docsView = createDocs($("docs"), () => { if (activeDoc()) editor.focus(); });
+
 registerTiBasic();
 registerC();
 registerPy2ez80();                                                        // ← CHANGED
+registerAsm();
 registerIntellisense();
 
 // The calculator shows a ":" before every line. It is a gutter, not file content, so saved programs stay clean.
@@ -139,7 +148,8 @@ function addDoc(init: Pick<Doc, "id" | "label" | "hint" | "language" | "write"> 
   model.onDidChangeContent(refresh);
   if (doc.language === "tibasic") watchModel(model);
   else {
-    model.updateOptions({ tabSize: 4, insertSpaces: true });
+    // Assembly lines up with tabs; everything else uses four spaces.
+    model.updateOptions(doc.language === ASM_LANG ? { tabSize: 8, insertSpaces: false } : { tabSize: 4, insertSpaces: true });
     if (doc.language === "python") watchPython(model);
   }
   return doc;
@@ -150,6 +160,7 @@ function activate(id: string, note?: string) {
   if (!doc) return;
   if (!tabOrder.includes(id)) tabOrder.push(id);
   active = id;
+  docsView.close();
   editor.setModel(doc.model);
   applyEditorMode();
   editor.focus();
@@ -327,7 +338,7 @@ async function loadProject(root: string, reveal = true) {
   try { localStorage.setItem(PROJECT_PREF, root); } catch { /* storage unavailable */ }
   if (reveal) showPane("files");
   renderTree();
-  applyEditorMode(); // the catalog and Build button follow the project type
+  applyEditorMode(); // the docs and Build button follow the project type
   setMessage(`Opened ${hasMakefile ? "C project" : "folder"} ${project.name}`);
 }
 
@@ -440,67 +451,101 @@ function markOverflow() {
   overflow.set(marks);
 }
 
-/** What the catalog shows depends on the toolchain of the active tab. */
-function catalogGroups(): { group: string; entries: { name: string; insert: string; hint: string; detail?: string }[] }[] {
+/** Which docs (and inserts) the active tab uses, or null for file types without one. */
+function catalogLang(): DocLangId | null {
   const language = activeDoc()?.language;
-  if (language === "tibasic") return tiCatalog(getTarget());
-  if (language === "python") return PY_CATALOG;
+  if (!language || language === "tibasic") return "tibasic";
+  if (language === "python") return "python";
+  if (language === ASM_LANG) return "ez80";
   // The CE toolchain builds C++ too. A Makefile marks the whole folder as a C project.
-  if (language === "c" || language === "cpp" || project?.hasMakefile) return C_CATALOG;
-  return language ? [] : tiCatalog(getTarget());
+  if (language === "c" || language === "cpp" || project?.hasMakefile) return "c";
+  return null;
 }
 
-function renderCatalog() {
-  const q = els.catFind.value.trim().toLowerCase();
+/** What the Docs view lists depends on the toolchain of the active tab. */
+function catalogGroups(): { group: string; entries: { name: string; insert: string; hint: string; detail?: string }[] }[] {
+  switch (catalogLang()) {
+    case "tibasic": return tiCatalog(getTarget());
+    case "python": return PY_CATALOG;
+    case "ez80": return ASM_CATALOG;
+    case "c": return C_CATALOG;
+    default: return [];
+  }
+}
+
+/** Opens the docs page for the active tab's language, at the named entry if given. */
+function openDocs(name?: string) {
+  docsView.open(catalogLang() ?? undefined, name);
+}
+
+/** The Docs view: every entry for the active tab's language. Click opens its page; Enter or + inserts it. */
+function renderDocList() {
+  const lang = catalogLang();
+  els.docsLang.textContent = lang ? `· ${DOCS.find(d => d.id === lang)!.label}` : "";
+  const q = els.docFind.value.trim().toLowerCase();
   const groups = catalogGroups();
   const nodes = groups.flatMap(group => {
     const entries = group.entries.filter(e => !q || `${e.name} ${e.hint} ${e.detail ?? ""}`.toLowerCase().includes(q));
     if (!entries.length) return [];
     return [
-      h("h3", {}, group.group),
+      h("h3", { className: "section" }, group.group),
       ...entries.map(e => {
         const hint = e.hint.replace(/`/g, "");
-        return h("button", { className: "item", type: "button", title: [e.detail, hint].filter(Boolean).join("\n"), onclick: () => insertSnippet(e.insert) },
-          h("code", {}, e.name), ...(hint ? [h("span", {}, hint)] : []));
+        const row = h("div", { className: "item", tabIndex: 0, title: [e.detail, hint, "Click: full docs · Enter: insert"].filter(Boolean).join("\n"),
+          onclick: () => openDocs(e.name) },
+          h("code", {}, e.name), ...(hint ? [h("span", {}, hint)] : []),
+          h("button", { className: "insert", type: "button", title: "Insert at the cursor", tabIndex: -1,
+            onclick: (ev: Event) => { ev.stopPropagation(); insertSnippet(e.insert); } }, "+"));
+        row.dataset.insert = e.insert;
+        return row;
       }),
     ];
   });
-  const none = groups.length ? "Nothing matches." : "No catalog for this file type.";
-  els.catalog.replaceChildren(...(nodes.length ? nodes : [h("p", { className: "hint" }, none)]));
+  const none = groups.length ? "Nothing matches." : "No docs for this file type.";
+  els.docList.replaceChildren(...(nodes.length ? nodes : [h("p", { className: "hint" }, none)]));
 }
 
-/** Inserts catalog text at the cursor. Monaco snippet syntax ($0, ${1:…}) expands into tab stops. */
+/** Inserts an entry at the cursor. Monaco snippet syntax ($0, ${1:…}) expands into tab stops. */
 function insertSnippet(text: string) {
   if (!activeDoc()) { setMessage("Open a program to insert commands."); return; }
   editor.focus();
   // Standalone Monaco has no "editor.action.insertSnippet" command; the snippet controller is the way in.
   editor.getContribution<monaco.editor.IEditorContribution & { insert(template: string): void }>("snippetController2")?.insert(text);
-  if (text.endsWith("(")) editor.trigger("catalog", "editor.action.triggerParameterHints", null);
+  if (text.endsWith("(")) editor.trigger("docs","editor.action.triggerParameterHints", null);
 }
 
-/** Arrow keys walk the catalog; Up from the first item goes back to the search box. */
-function catalogKeys(e: KeyboardEvent) {
+/** Arrow keys walk the docs list; Up from the first item goes back to the search box. */
+function docListKeys(e: KeyboardEvent) {
   if (e.key === "Escape") { e.preventDefault(); editor.focus(); return; }
-  const items = [...els.catalog.querySelectorAll<HTMLButtonElement>(".item")];
-  if (e.key === "Enter" && e.target === els.catFind) {
-    e.preventDefault();
-    // Best match, not first listed: "sin(" must pick sin( over asin(.
-    const q = els.catFind.value.trim().toLowerCase();
-    const named = (test: (name: string) => boolean) => items.find(i => test(i.querySelector("code")!.textContent!.toLowerCase()));
-    (named(n => n === q) ?? named(n => n.startsWith(q)) ?? items[0])?.click();
-    return;
-  }
+  const items = [...els.docList.querySelectorAll<HTMLElement>(".item")];
+  const nameOf = (i: HTMLElement) => i.querySelector("code")!.textContent!;
+  // Best match, not first listed: "sin(" must pick sin( over asin(.
+  const best = () => {
+    const q = els.docFind.value.trim().toLowerCase();
+    const named = (test: (name: string) => boolean) => items.find(i => test(nameOf(i).toLowerCase()));
+    return named(n => n === q) ?? named(n => n.startsWith(q)) ?? items[0];
+  };
+  const current = e.target === els.docFind ? best() : (e.target as HTMLElement).closest<HTMLElement>(".item");
+  if (e.key === "F1") { e.preventDefault(); if (current) openDocs(nameOf(current)); return; }
+  if (e.key === "Enter") { e.preventDefault(); if (current?.dataset.insert) insertSnippet(current.dataset.insert); return; }
   if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
   e.preventDefault();
-  const next = items.indexOf(e.target as HTMLButtonElement) + (e.key === "ArrowDown" ? 1 : -1);
-  if (next < 0) els.catFind.focus();
+  const next = items.indexOf(e.target as HTMLElement) + (e.key === "ArrowDown" ? 1 : -1);
+  if (next < 0) els.docFind.focus();
   else items[Math.min(next, items.length - 1)]?.focus();
 }
 
-const PANES = ["files", "catalog"] as const;
-function showPane(which: (typeof PANES)[number]) {
+const PANES = ["files", "docs"] as const;
+type Pane = (typeof PANES)[number];
+let pane: Pane = "files";
+const app = document.querySelector<HTMLElement>(".app")!;
+/** Shows a side bar view. As in VS Code, picking the view that is already showing hides the side bar. */
+function showPane(which: Pane, toggle = false) {
+  const hide = toggle && which === pane && !app.classList.contains("no-side");
+  app.classList.toggle("no-side", hide);
+  pane = which;
   for (const k of PANES) {
-    $(`tab-${k}`).setAttribute("aria-selected", String(k === which));
+    $(`act-${k}`).setAttribute("aria-pressed", String(k === which && !hide));
     $(`pane-${k}`).hidden = k !== which;
   }
 }
@@ -525,7 +570,8 @@ function applyEditorMode() {
   els.exportBtn.title = make
     ? `Runs make in ${project?.name} (Ctrl+E). Saves changed files first.`
     : "Ctrl+E rebuilds to the same file. Ctrl+Shift+E picks a new location.";
-  renderCatalog(); // the catalog follows the toolchain of the active tab
+  renderDocList(); // the docs follow the toolchain of the active tab
+  renderProject(); // so does the status bar
 }
 
 function renderProblems() {
@@ -543,7 +589,20 @@ function renderProblems() {
   els.problems.className = errors ? "has-errors" : warnings ? "has-warnings" : "";
 }
 
+const statusBar = document.querySelector<HTMLElement>(".status")!;
+const KIND_LABEL: Record<DocLangId, string> = { tibasic: "TI-BASIC", c: "C", python: "py2ez80", ez80: "eZ80 assembly" };
+
+/** The status bar takes the color of the active toolchain and names the project on its left, as VS Code does. */
+function renderProject() {
+  const kind = catalogLang();
+  statusBar.dataset.kind = kind ?? "plain";
+  const where = project ? `${project.hasMakefile ? "C project" : "Folder"}: ${project.name}` : "Programs";
+  els.project.textContent = kind ? `${where} · ${KIND_LABEL[kind]}` : where;
+  els.project.title = project ? project.root : "TI-BASIC programs stored by TIde";
+}
+
 function renderStatus() {
+  renderProject();
   const doc = activeDoc();
   const pos = editor.getPosition();
   els.pos.textContent = doc && pos ? `Ln ${pos.lineNumber}, Col ${pos.column}` : "";
@@ -574,14 +633,14 @@ function refresh() {
 
 editor.onDidChangeCursorPosition(renderStatus);
 els.find.addEventListener("input", renderList);
-els.catFind.addEventListener("input", renderCatalog);
-els.catFind.addEventListener("keydown", catalogKeys);
-els.catalog.addEventListener("keydown", catalogKeys);
+els.docFind.addEventListener("input", renderDocList);
+els.docFind.addEventListener("keydown", docListKeys);
+els.docList.addEventListener("keydown", docListKeys);
 monaco.editor.onDidChangeMarkers(renderProblems);
 els.problems.addEventListener("click", () => { editor.focus(); void editor.getAction("editor.action.marker.next")?.run(); });
 els.exportBtn.addEventListener("click", () => void exportActive());
-$("tab-files").addEventListener("click", () => { showPane("files"); els.find.focus(); });
-$("tab-catalog").addEventListener("click", () => { showPane("catalog"); els.catFind.focus(); });
+$("act-files").addEventListener("click", () => showPane("files", true));
+$("act-docs").addEventListener("click", () => showPane("docs", true));
 els.openFolder.addEventListener("click", () => void openFolder());
 els.gutter.addEventListener("click", () => {
   showNumbers = !showNumbers;
@@ -615,13 +674,24 @@ window.addEventListener("keydown", e => {
   else if (key === "e") { e.preventDefault(); void exportActive(); }
   else if (key === "w" && active) { e.preventDefault(); closeTab(active); }
   else if (key === "n") { e.preventDefault(); showPane("files"); els.find.focus(); }
-  else if (key === "j") { e.preventDefault(); showPane("catalog"); els.catFind.select(); }
+  else if (e.shiftKey && key === "j") { e.preventDefault(); if (docsView.isOpen) docsView.close(); else openDocs(); }
+  else if (key === "j") { e.preventDefault(); showPane("docs"); els.docFind.select(); }
+  else if (key === "b") { e.preventDefault(); showPane(pane, true); }
 });
 
 store.list().then(list => { names = list; refresh(); checkPrograms(); }).catch(err => setMessage(`Could not load programs: ${err}`));
 applyEditorMode();
-renderCatalog();
+showPane("files");
 renderTree();
+
+// Desktop builds check the latest release for an update; the status bar shows the version and checks on click.
+if (fs.available) {
+  const version = $<HTMLButtonElement>("version");
+  version.hidden = false;
+  appVersion().then(v => { version.textContent = `TIde ${v}`; }).catch(() => { version.textContent = "TIde"; });
+  version.addEventListener("click", () => void checkForUpdate(setMessage));
+  if (!import.meta.env.DEV) void checkForUpdate(setMessage, true);
+}
 
 // Reopen the last project folder, quietly: if it moved or was deleted, just start empty.
 if (fs.available) {

@@ -7,31 +7,39 @@
   </head>
   <body>
     <div class="app">
-      <aside class="side">
-        <div class="switch">
-          <button id="tab-files" type="button">Programs</button>
-          <button id="tab-catalog" type="button" title="Catalog (Ctrl+J)">Catalog</button>
-        </div>
+      <nav class="activity" aria-label="Views">
+        <img class="logo" src="/app-icon.svg" alt="TIde" />
+        <button id="act-files" type="button" title="Explorer (Ctrl+B hides the side bar)" aria-label="Explorer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></svg>
+        </button>
+        <button id="act-docs" type="button" title="Docs (Ctrl+J)" aria-label="Docs">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21a2 2 0 0 1 2-2h13v2"/><path d="M8 7h7M8 11h5"/></svg>
+        </button>
+      </nav>
 
+      <aside class="side">
         <div class="pane" id="pane-files">
+          <div class="side-title">Explorer</div>
           <input id="find" placeholder="Find or create a program…" title="Enter opens the first match, or creates it if there is none. Ctrl+Enter always creates." spellcheck="false" />
           <div class="files">
+            <h3 class="section">Programs</h3>
             <ul id="list"></ul>
             <p class="hint" id="list-empty" hidden>
               Nothing yet. Type a name and press Enter to create one.
             </p>
-            <div class="project-head">
+            <div class="project-head section">
               <span id="project-name">No folder open</span>
-              <button id="open-folder" type="button">Open folder</button>
+              <button id="open-folder" type="button" title="Open folder (Ctrl+Shift+O)">Open folder</button>
             </div>
             <ul id="tree"></ul>
             <p class="hint" id="tree-empty" hidden>Open a folder to see its files here.</p>
           </div>
         </div>
 
-        <div class="pane" id="pane-catalog" hidden>
-          <input id="cat-find" placeholder="Search commands…" spellcheck="false" />
-          <div id="catalog"></div>
+        <div class="pane" id="pane-docs" hidden>
+          <div class="side-title">Docs <span id="docs-lang"></span></div>
+          <input id="doc-find" placeholder="Search docs…" title="Enter inserts the best match. F1 opens its full page." spellcheck="false" />
+          <div id="doc-list"></div>
         </div>
       </aside>
 
@@ -39,22 +47,26 @@
         <div class="tabs" id="tabs"></div>
         <div class="stage">
           <div id="editor"></div>
+          <div class="docs" id="docs" hidden></div>
           <div class="empty" id="empty">
+            <img src="/app-icon.svg" alt="" width="96" height="96" />
             <strong>TIde</strong>
-            <span class="hint">Open a program from the list, or type a name and press Enter.</span>
+            <span class="hint">Open a program from the Explorer, or type a name and press Enter.</span>
           </div>
         </div>
-        <div class="status">
-          <span id="status-msg"></span>
-          <button id="export" type="button" hidden>Build .8xp</button>
-          <button id="target" type="button" title="Which calculator TI-BASIC programs are for. Sets the screen size checks and which commands are available.">Target: CE</button>
-          <button id="gutter" type="button">Gutter: ":"</button>
-          <button id="problems" type="button" hidden>No problems</button>
-          <span class="spacer"></span>
-          <span id="status-pos"></span>
-          <span id="status-size"></span>
-        </div>
       </section>
+
+      <footer class="status" data-kind="tibasic">
+        <span id="status-project"></span>
+        <button id="problems" type="button" hidden>No problems</button>
+        <span id="status-msg"></span>
+        <button id="export" type="button" hidden>Build .8xp</button>
+        <button id="target" type="button" title="Which calculator TI-BASIC programs are for. Sets the screen size checks and which commands are available.">Target: CE</button>
+        <button id="gutter" type="button">Gutter: ":"</button>
+        <span id="status-pos"></span>
+        <span id="status-size"></span>
+        <button id="version" type="button" title="Check for updates" hidden></button>
+      </footer>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
