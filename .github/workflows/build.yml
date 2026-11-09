@@ -32,10 +32,8 @@ jobs:
         run: |
           set -euo pipefail
           echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-          # Every build gets a higher version (major.minor from tauri.conf.json, then the run number),
-          # so the updater can tell it is newer.
-          base=$(jq -r .version src-tauri/tauri.conf.json)
-          echo "version=${base%.*}.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          # The release is the version in tauri.conf.json. Installed apps update when it goes up.
+          echo "version=$(jq -r .version src-tauri/tauri.conf.json)" >> "$GITHUB_OUTPUT"
           if ! gh release view latest --repo "$REPO" >/dev/null 2>&1; then
             gh release create latest --repo "$REPO" \
               --title "Latest Build" \
@@ -186,7 +184,7 @@ jobs:
 
           # The release text is RELEASE_NOTES.md, which the app also shows when it offers the update.
           printf '%s\n\n---\nTIde %s, built from commit %s.\n' "$(cat RELEASE_NOTES.md)" "$VERSION" "$SHA" > body.md
-          gh release edit latest --repo "$REPO" --title "TIde $VERSION" --notes-file body.md --latest
+          gh release edit latest --repo "$REPO" --title "TIde v$VERSION" --notes-file body.md --latest
 
           # latest.json tells installed apps about this version: one signed download per platform.
           mkdir -p sigs

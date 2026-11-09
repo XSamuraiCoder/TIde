@@ -47,7 +47,7 @@ Press F1 on an entry to open its page, and Esc to close the page.
 
 The desktop app checks the `latest` release when it starts. If there is a newer build it offers the update, with the release notes from [RELEASE_NOTES.md](RELEASE_NOTES.md); click the version in the status bar to check at any time. Edit `RELEASE_NOTES.md` before pushing to change what the next release says. The portable exe and the zipped `.app` don't update themselves.
 
-Each build workflow run is versioned `major.minor.<run number>` and its update files are signed. The workflow needs the signing key as the `TAURI_SIGNING_PRIVATE_KEY` repository secret (and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if the key has one). The public key is in `tauri.conf.json`.
+Releases use the version in `src-tauri/tauri.conf.json` (also set it in `package.json` and `Cargo.toml`); installed apps are offered an update only when it goes up, so bump it to ship one. Update files are signed. The workflow needs the signing key as the `TAURI_SIGNING_PRIVATE_KEY` repository secret (and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if the key has one). The public key is in `tauri.conf.json`.
 
 ## Shortcuts
 
