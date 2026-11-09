@@ -9,6 +9,7 @@ import { C_CATALOG, registerC } from "./c-support";                        // �
 import { PY_CATALOG, registerPy2ez80, watchPython } from "./py2ez80-support"; // ← CHANGED: py2ez80 support
 import { ASM_CATALOG, ASM_LANG, registerAsm } from "./asm-support";
 import { appVersion, checkForUpdate } from "./updater";
+import { createScm } from "./scm";
 import { DOCS, createDocs, type DocLangId } from "./docs";
 import { registerIntellisense, watchModel } from "./intellisense";
 import { tokenize } from "./build";
@@ -66,6 +67,25 @@ function h<K extends keyof HTMLElementTagNameMap>(
 // ── State ──────────────────────────────────────────────────────────────────
 
 const docsView = createDocs($("docs"), () => { if (activeDoc()) editor.focus(); });
+
+const scm = createScm({
+  root: () => project?.root ?? null,
+  open: (path, name) => void openFile({ name, path, isDir: false }),
+  say: text => setMessage(text),
+  changed: status => {
+    // Changed-file count on the activity bar, and the branch in the status bar.
+    const badge = $("scm-badge"), branch = $<HTMLButtonElement>("status-branch");
+    const count = status?.files.length ?? 0;
+    badge.hidden = !count;
+    badge.textContent = count > 99 ? "99+" : String(count);
+    branch.hidden = !status?.branch;
+    if (status) {
+      const sync = [status.ahead && `↑${status.ahead}`, status.behind && `↓${status.behind}`].filter(Boolean).join(" ");
+      branch.textContent = `⎇ ${status.branch}${sync ? ` ${sync}` : ""}`;
+      branch.title = `${status.branch}${status.upstream ? "" : " (not pushed yet)"} · Source Control`;
+    }
+  },
+});
 
 registerTiBasic();
 registerC();
@@ -215,6 +235,7 @@ async function saveDoc(doc: Doc): Promise<boolean> {
     doc.savedVersion = doc.model.getAlternativeVersionId();
     if (doc.language === "tibasic") buildErrors.set(doc.label, tokenize(doc.model.getValue()).errors.length);
     setMessage(`Saved ${doc.label}`);
+    if (doc.id.startsWith("file:")) void scm.refresh();
   } catch (err) {
     setMessage(`Could not save ${doc.label}: ${err}`);
     saved = false;
@@ -250,6 +271,7 @@ async function buildProject() {
       try { dirCache.set(dir, await fs.readDir(dir)); } catch { dirCache.delete(dir); }
     }));
     renderTree();
+    void scm.refresh();
   } catch (err) {
     setMessage(`Could not build ${name}: ${err}`);
   } finally {
@@ -340,6 +362,7 @@ async function loadProject(root: string, reveal = true) {
   renderTree();
   applyEditorMode(); // the docs and Build button follow the project type
   setMessage(`Opened ${hasMakefile ? "C project" : "folder"} ${project.name}`);
+  void scm.refresh();
 }
 
 async function openFolder() {
@@ -535,7 +558,7 @@ function docListKeys(e: KeyboardEvent) {
   else items[Math.min(next, items.length - 1)]?.focus();
 }
 
-const PANES = ["files", "docs"] as const;
+const PANES = ["files", "scm", "docs"] as const;
 type Pane = (typeof PANES)[number];
 let pane: Pane = "files";
 const app = document.querySelector<HTMLElement>(".app")!;
@@ -548,6 +571,7 @@ function showPane(which: Pane, toggle = false) {
     $(`act-${k}`).setAttribute("aria-pressed", String(k === which && !hide));
     $(`pane-${k}`).hidden = k !== which;
   }
+  if (which === "scm" && !hide) void scm.refresh();
 }
 
 /** TI-BASIC gets the calculator's ":" gutter, the 26-column ruler and its own completions; other languages get a normal editor. */
@@ -641,6 +665,9 @@ els.problems.addEventListener("click", () => { editor.focus(); void editor.getAc
 els.exportBtn.addEventListener("click", () => void exportActive());
 $("act-files").addEventListener("click", () => showPane("files", true));
 $("act-docs").addEventListener("click", () => showPane("docs", true));
+$("act-scm").addEventListener("click", () => showPane("scm", true));
+$("status-branch").addEventListener("click", () => showPane("scm"));
+window.addEventListener("focus", () => void scm.refresh()); // files may have changed outside TIde
 els.openFolder.addEventListener("click", () => void openFolder());
 els.gutter.addEventListener("click", () => {
   showNumbers = !showNumbers;
@@ -677,6 +704,7 @@ window.addEventListener("keydown", e => {
   else if (e.shiftKey && key === "j") { e.preventDefault(); if (docsView.isOpen) docsView.close(); else openDocs(); }
   else if (key === "j") { e.preventDefault(); showPane("docs"); els.docFind.select(); }
   else if (key === "b") { e.preventDefault(); showPane(pane, true); }
+  else if (e.shiftKey && key === "g") { e.preventDefault(); showPane("scm"); }
 });
 
 store.list().then(list => { names = list; refresh(); checkPrograms(); }).catch(err => setMessage(`Could not load programs: ${err}`));

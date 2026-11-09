@@ -12,6 +12,10 @@
         <button id="act-files" type="button" title="Explorer (Ctrl+B hides the side bar)" aria-label="Explorer">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></svg>
         </button>
+        <button id="act-scm" type="button" title="Source Control (Ctrl+Shift+G)" aria-label="Source Control">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10"/><path d="M18 9c0 5-12 3-12 8"/></svg>
+          <span class="badge" id="scm-badge" hidden></span>
+        </button>
         <button id="act-docs" type="button" title="Docs (Ctrl+J)" aria-label="Docs">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21a2 2 0 0 1 2-2h13v2"/><path d="M8 7h7M8 11h5"/></svg>
         </button>
@@ -33,6 +37,22 @@
             </div>
             <ul id="tree"></ul>
             <p class="hint" id="tree-empty" hidden>Open a folder to see its files here.</p>
+          </div>
+        </div>
+
+        <div class="pane" id="pane-scm" hidden>
+          <div class="side-title">Source Control</div>
+          <p class="hint scm-note" id="scm-note"></p>
+          <button id="scm-init" class="scm-init" type="button" hidden>Initialize repository</button>
+          <div class="scm-repo" id="scm-repo" hidden>
+            <textarea id="scm-message" rows="3" placeholder="Message (Ctrl+Enter to commit)" spellcheck="true"></textarea>
+            <div class="scm-actions">
+              <button id="scm-commit" type="button" class="primary" title="Commits the staged changes, or every change if none are staged">Commit</button>
+              <button id="scm-pull" type="button">Pull</button>
+              <button id="scm-push" type="button">Push</button>
+              <button id="scm-refresh" type="button" title="Refresh" aria-label="Refresh">⟳</button>
+            </div>
+            <div class="scm-lists" id="scm-lists"></div>
           </div>
         </div>
 
@@ -58,6 +78,7 @@
 
       <footer class="status" data-kind="tibasic">
         <span id="status-project"></span>
+        <button id="status-branch" type="button" title="Source Control" hidden></button>
         <button id="problems" type="button" hidden>No problems</button>
         <span id="status-msg"></span>
         <button id="export" type="button" hidden>Build .8xp</button>
@@ -68,6 +89,25 @@
         <button id="version" type="button" title="Check for updates" hidden></button>
       </footer>
     </div>
+
+    <!-- Update notice and release notes, filled in by src/updater.ts -->
+    <div class="toast" id="update-toast" role="status" hidden>
+      <p><strong id="update-version"></strong> is available.</p>
+      <div class="actions">
+        <button id="update-skip" type="button">Skip</button>
+        <button id="update-notes-button" type="button">Release notes</button>
+        <button id="update-now" type="button" class="primary">Update</button>
+      </div>
+    </div>
+    <dialog class="update-dialog" id="update-dialog">
+      <h2 id="update-title"></h2>
+      <p class="hint" id="update-current"></p>
+      <div class="md" id="update-notes"></div>
+      <div class="actions">
+        <button id="update-later" type="button">Later</button>
+        <button id="update-install" type="button" class="primary">Update and restart</button>
+      </div>
+    </dialog>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

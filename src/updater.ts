@@ -74,23 +74,31 @@ export function renderMarkdown(source: string): HTMLElement {
   return root;
 }
 
-/** The release notes and an install button, in a modal dialog. */
-function showNotes(update: Update, say: (text: string) => void) {
-  const dialog = el("dialog", { className: "update-dialog" });
-  const install = el("button", { type: "button", className: "primary", onclick: () => void installUpdate(update, say, install) }, "Update and restart");
-  dialog.append(
-    el("h2", {}, `TIde ${update.version}`),
-    el("p", { className: "hint" }, `You have ${update.currentVersion}.`),
-    renderMarkdown(update.body?.trim() || "No release notes."),
-    el("div", { className: "actions" }, el("button", { type: "button", onclick: () => dialog.close() }, "Later"), install),
-  );
-  dialog.addEventListener("close", () => dialog.remove());
-  document.body.append(dialog);
-  dialog.showModal();
-}
+// The notice and the dialog are in index.html; this fills them in for the update that was found.
+const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+const ui = {
+  toast: $("update-toast"),
+  version: $("update-version"),
+  skip: $<HTMLButtonElement>("update-skip"),
+  notesButton: $<HTMLButtonElement>("update-notes-button"),
+  now: $<HTMLButtonElement>("update-now"),
+  dialog: $<HTMLDialogElement>("update-dialog"),
+  title: $("update-title"),
+  current: $("update-current"),
+  notes: $("update-notes"),
+  later: $<HTMLButtonElement>("update-later"),
+  install: $<HTMLButtonElement>("update-install"),
+};
 
-async function installUpdate(update: Update, say: (text: string) => void, button?: HTMLButtonElement) {
-  if (button) { button.disabled = true; button.textContent = "Downloading…"; }
+let found: Update | null = null;
+let say: (text: string) => void = () => {};
+
+async function installUpdate() {
+  if (!found) return;
+  const update = found;
+  ui.toast.hidden = true;
+  ui.install.disabled = ui.now.disabled = true;
+  ui.install.textContent = "Downloading…";
   let total = 0, done = 0;
   try {
     await update.downloadAndInstall(event => {
@@ -103,28 +111,34 @@ async function installUpdate(update: Update, say: (text: string) => void, button
     await relaunch();
   } catch (err) {
     say(`Update failed: ${err}`);
-    if (button) { button.disabled = false; button.textContent = "Update and restart"; }
+    ui.install.disabled = ui.now.disabled = false;
+    ui.install.textContent = "Update and restart";
   }
 }
 
-/** A notice in the corner, as in VS Code: release notes, update, or skip this version. */
-function showToast(update: Update, say: (text: string) => void) {
-  document.querySelector(".toast")?.remove();
-  const toast = el("div", { className: "toast", role: "status" },
-    el("p", {}, el("strong", {}, `TIde ${update.version}`), " is available."),
-    el("div", { className: "actions" },
-      el("button", { type: "button", onclick: () => { toast.remove(); try { localStorage.setItem(SKIP_PREF, update.version); } catch { /* storage unavailable */ } } }, "Skip"),
-      el("button", { type: "button", onclick: () => showNotes(update, say) }, "Release notes"),
-      el("button", { type: "button", className: "primary", onclick: () => { toast.remove(); void installUpdate(update, say); } }, "Update"),
-    ));
-  document.body.append(toast);
+function showNotes() {
+  if (!found) return;
+  ui.title.textContent = `TIde ${found.version}`;
+  ui.current.textContent = `You have ${found.currentVersion}.`;
+  ui.notes.replaceChildren(...renderMarkdown(found.body?.trim() || "No release notes.").childNodes);
+  if (!ui.dialog.open) ui.dialog.showModal();
 }
+
+ui.skip.addEventListener("click", () => {
+  ui.toast.hidden = true;
+  if (found) try { localStorage.setItem(SKIP_PREF, found.version); } catch { /* storage unavailable */ }
+});
+ui.notesButton.addEventListener("click", showNotes);
+ui.now.addEventListener("click", () => void installUpdate());
+ui.later.addEventListener("click", () => ui.dialog.close());
+ui.install.addEventListener("click", () => void installUpdate());
 
 /**
  * Checks for an update. On start-up (`quiet`) it says nothing unless one is found and skips a version
  * the user chose to skip; asked from the status bar it always reports the result.
  */
-export async function checkForUpdate(say: (text: string) => void, quiet = false): Promise<void> {
+export async function checkForUpdate(report: (text: string) => void, quiet = false): Promise<void> {
+  say = report;
   if (!quiet) say("Checking for updates…");
   try {
     const update = await check();
@@ -132,7 +146,9 @@ export async function checkForUpdate(say: (text: string) => void, quiet = false)
     let skipped: string | null = null;
     try { skipped = localStorage.getItem(SKIP_PREF); } catch { /* storage unavailable */ }
     if (quiet && skipped === update.version) return;
-    showToast(update, say);
+    found = update;
+    ui.version.textContent = `TIde ${update.version}`;
+    ui.toast.hidden = false;
   } catch (err) {
     if (!quiet) say(`Could not check for updates: ${err}`);
   }

@@ -2,6 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
 
+mod git;
 mod project;
 
 const EXTENSION: &str = ".tide.txt";
@@ -67,7 +68,14 @@ pub fn run() {
             project::read_text_file,
             project::write_text_file,
             project::write_binary_file,
-            project::run_make
+            project::run_make,
+            git::git_status,
+            git::git_stage,
+            git::git_unstage,
+            git::git_commit,
+            git::git_push,
+            git::git_pull,
+            git::git_init
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

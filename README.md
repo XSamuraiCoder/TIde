@@ -32,6 +32,10 @@ Opening a folder with a `Makefile`, `makefile` or `GNUmakefile` in its root trea
 
 Building needs the [CE C toolchain](https://github.com/CE-Programming/toolchain) with `make` on your `PATH`. The toolchain only targets the CE.
 
+## Source Control
+
+The **Source Control** view (`Ctrl+Shift+G`) shows the git status of the open folder: staged changes and changes, with **+** and **−** to stage and unstage a file or all of them. Type a message and press **Commit** or `Ctrl+Enter`; with nothing staged it commits every change. **Pull** (fast-forward only) and **Push** work once the branch has an upstream. The status bar shows the branch and how far it is ahead or behind, and the activity bar shows how many files changed. It uses your own `git`, so your config, credentials and hooks apply.
+
 ## Docs
 
 The **Docs** view in the activity bar lists everything you can use in the active file. Click an entry to open its full page (usage, description and parameters) in the editor area, or press Enter or **+** to insert it at the cursor. Searching and pressing Enter inserts the best match.
@@ -61,6 +65,7 @@ Use Cmd instead of Ctrl on macOS.
 | `Ctrl+J` | Search the docs |
 | `Ctrl+Shift+J` | Open or close the docs page |
 | `Ctrl+B` | Show or hide the side bar |
+| `Ctrl+Shift+G` | Source Control |
 | `Ctrl+N` | Find or create a program |
 | `Ctrl+Shift+O` | Open a folder |
 | `Ctrl+W` | Close the tab |
