@@ -116,5 +116,3 @@ cargo test --lib
 ## Credits
 
 - [CEmu](https://github.com/CE-Programming/CEmu) by the CE Programming team: its core runs the calculator panel, downloaded on first use.
-
-Claude was used to debug and fix errors in this program.
