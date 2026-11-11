@@ -57,7 +57,10 @@ export interface Fs {
   pickFolder(): Promise<string | null>;
   pickSaveFile(defaultName: string): Promise<string | null>;
   pickFile(label: string, extensions: string[]): Promise<string | null>;
+  pickFiles(label: string, extensions: string[]): Promise<string[]>;
   readBinary(path: string): Promise<Uint8Array>;
+  /** The CE C libraries (clibs.8xg) from the project or the toolchain, if they are anywhere TIde looks. */
+  findClibs(projectRoot: string | null): Promise<string | null>;
   readDir(path: string): Promise<Entry[]>;
   readFile(path: string): Promise<string>;
   writeFile(path: string, contents: string): Promise<void>;
@@ -90,6 +93,12 @@ export const fs: Fs = isTauri
         const picked = await open({ multiple: false, filters: [{ name: label, extensions }] });
         return typeof picked === "string" ? picked : null;
       },
+      async pickFiles(label, extensions) {
+        const { open } = await import("@tauri-apps/plugin-dialog");
+        const picked = await open({ multiple: true, filters: [{ name: label, extensions }] });
+        return Array.isArray(picked) ? picked : typeof picked === "string" ? [picked] : [];
+      },
+      findClibs: projectRoot => invoke<string | null>("find_clibs", { projectRoot }),
       readBinary: async path => new Uint8Array(await invoke<ArrayBuffer>("calc_read_program", { path })),
       async pickSaveFile(defaultName) {
         const { save } = await import("@tauri-apps/plugin-dialog");
@@ -125,7 +134,9 @@ export const fs: Fs = isTauri
       pickFolder: unavailable,
       pickSaveFile: unavailable,
       pickFile: unavailable,
+      pickFiles: unavailable,
       readBinary: unavailable,
+      findClibs: unavailable,
       readDir: unavailable,
       readFile: unavailable,
       writeFile: unavailable,

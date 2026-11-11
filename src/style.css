@@ -28,9 +28,8 @@ body { font: 13px/1.4 var(--ui); background: var(--body); color: var(--ink); ove
 :focus-visible { outline: 2px solid var(--key); outline-offset: -2px; }
 
 /* VS Code-style frame: activity bar, side bar, editor, and a status bar across the bottom */
-.app { --side-w: 230px; --calc-w: 0px; display: grid; grid-template-columns: 44px var(--side-w) minmax(0, 1fr) var(--calc-w); grid-template-rows: minmax(0, 1fr) 22px; height: 100%; }
+.app { --side-w: 230px; display: grid; grid-template-columns: 44px var(--side-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 22px; height: 100%; }
 .app.no-side { --side-w: 0px; }
-.app.with-calc { --calc-w: 352px; }
 .app.no-side .side { display: none; }
 
 .hint { color: var(--muted); font-size: 12px; }
@@ -213,36 +212,53 @@ body { font: 13px/1.4 var(--ui); background: var(--body); color: var(--ink); ove
 .scm-head .act:hover, .scm-files .act:hover { background: var(--key-wash); }
 .scm-clean { padding: 6px 14px; }
 
-/* Calculator panel: CEmu running inside TIde, on the right like a secondary side bar */
-.calc { display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow-y: auto; background: var(--panel); border-left: 1px solid var(--rule); }
-.calc[hidden] { display: none; }
-.calc-title { display: flex; align-items: center; gap: 4px; padding-right: 8px; }
-.calc-title > span:first-child { flex: 1; }
-#calc-state { text-transform: none; letter-spacing: 0; color: var(--key); }
-.calc-title button { font: 11px var(--ui); text-transform: none; letter-spacing: 0; color: var(--muted); background: none; border: 0; border-radius: 2px; padding: 2px 5px; cursor: pointer; }
-.calc-title button:hover { color: var(--ink); background: var(--body); }
-.calc-setup { padding: 8px 14px; display: flex; flex-direction: column; gap: 8px; }
-.calc-setup[hidden], .calc-setup button[hidden], .calc-body[hidden] { display: none; }
-.calc-setup button { font: inherit; font-size: 12.5px; font-weight: 600; color: var(--navy); background: var(--key); border: 0; border-radius: 3px; padding: 6px 10px; cursor: pointer; }
+/* Calculator: CEmu running inside TIde, filling the editor area like the docs page */
+.calc { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; background: var(--paper); }
+.calc[hidden], .calc-setup[hidden], .calc-setup button[hidden], .calc-body[hidden], .calc-drop[hidden] { display: none; }
+.calc-bar { display: flex; align-items: center; gap: 6px; padding: 6px 10px 6px 16px; background: var(--panel); border-bottom: 1px solid var(--rule); }
+.calc-name { flex: 1; font: 600 13px var(--ui); }
+#calc-state { font-weight: 400; font-size: 12px; color: var(--key); margin-left: 4px; }
+.calc-bar button { font: inherit; font-size: 12px; color: var(--ink); background: var(--body); border: 1px solid var(--rule); border-radius: 3px; padding: 4px 10px; cursor: pointer; }
+.calc-bar button:hover { border-color: var(--key); }
+.calc-bar #calc-send { color: var(--navy); background: var(--key); border-color: var(--key); font-weight: 600; }
+.calc-bar #calc-close { background: none; border-color: transparent; font-size: 16px; line-height: 1; padding: 2px 8px; }
+.calc-setup { margin: 40px auto; max-width: 420px; padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
+.calc-setup button { font: inherit; font-size: 13px; font-weight: 600; color: var(--navy); background: var(--key); border: 0; border-radius: 3px; padding: 8px 12px; cursor: pointer; }
 .calc-setup button:disabled { opacity: .5; }
-.calc-body { padding: 6px 12px 10px; }
-.bezel { padding: 10px; border-radius: 10px 10px 4px 4px; background: #050b1a; box-shadow: inset 0 0 0 1px #1a2c52; }
-#calc-lcd { display: block; width: 100%; aspect-ratio: 4 / 3; image-rendering: pixelated; background: #000; border-radius: 2px; outline-offset: 3px; }
-.calc-keypad { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
-.keyrow { display: flex; gap: 6px; align-items: center; }
-.key { flex: 1; min-width: 0; height: 26px; font: 600 11px var(--ui); color: var(--ink); background: #1b2f58; border: 0; border-radius: 4px; box-shadow: 0 2px 0 #0a1530; cursor: pointer; user-select: none; }
-.key:active { transform: translateY(1px); box-shadow: 0 1px 0 #0a1530; }
-.key.fn { height: 18px; font-size: 10px; background: #13264b; }
-.key.num { background: #2b4170; font-size: 13px; }
-.key.op { background: #1e40af; }
+.calc-body { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(2, var(--pane-w, 420px)); grid-auto-rows: var(--pane-h, 340px); justify-content: center; align-content: center; gap: 24px; padding: 20px 24px 8px; }
+.calc-body.stacked { grid-template-columns: var(--pane-w, 420px); }
+.calc-lcd-area { display: grid; place-items: center; min-width: 0; }
+.bezel { padding: 14px; border-radius: 14px 14px 6px 6px; background: #050b1a; box-shadow: inset 0 0 0 1px #1a2c52, 0 10px 30px rgba(0, 0, 0, .35); }
+#calc-lcd { display: block; background: #000; border-radius: 2px; outline-offset: 4px; }
+.calc-credit { padding: 0 16px 8px; text-align: center; font-size: 11.5px; }
+.calc-credit a { color: var(--key); }
+/* The keypad is the same size as the screen; its rows and keys stretch to fill it. */
+.calc-keypad { container-type: size; display: flex; flex-direction: column; gap: 2.2cqh; padding: 3cqh 4cqw; border-radius: 14px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--rule); min-width: 0; }
+.keyrow { flex: 1; min-height: 0; display: flex; gap: 2.6cqw; align-items: stretch; }
+.keyrow:first-child { flex: .65; }
+.key { flex: 1; min-width: 0; min-height: 0; font: 600 clamp(9px, 3.4cqh, 16px) var(--ui); color: var(--ink); background: #1b2f58; border: 0; border-radius: 6px; box-shadow: 0 3px 0 #0a1530; cursor: pointer; user-select: none; }
+.key:hover { filter: brightness(1.12); }
+.key:active { transform: translateY(2px); box-shadow: 0 1px 0 #0a1530; }
+.key.fn { font-size: clamp(8px, 2.8cqh, 13px); border-radius: 999px; background: #13264b; }
+.key.num { background: #2b4170; font-size: clamp(10px, 4.2cqh, 19px); }
+.key.op { background: #1e40af; font-size: clamp(10px, 4.2cqh, 19px); }
 .key.second { background: var(--wave-top); color: var(--navy); }
 .key.alpha { background: #34d399; color: var(--navy); }
-.keyrow:nth-child(2) .key, .keyrow:nth-child(3) .key { flex: 0 0 52px; }
-.arrows { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 18px); gap: 2px; margin-left: 6px; }
-.arrows .key { height: 18px; font-size: 9px; }
+/* The arrow pad sits to the right of the 2nd/mode/del and alpha/X,T,θ,n/stat rows, two rows tall. */
+.keyrow:nth-child(2), .keyrow:nth-child(3) { padding-right: 34%; position: relative; }
+.arrows { position: absolute; right: 0; top: 0; width: 31%; height: calc(200% + 2.2cqh); display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 3px; }
+.arrows .key { font-size: clamp(8px, 2.6cqh, 13px); border-radius: 5px; }
 .arrows .key:nth-child(1) { grid-area: 1 / 2; } .arrows .key:nth-child(2) { grid-area: 2 / 1; }
 .arrows .key:nth-child(3) { grid-area: 2 / 3; } .arrows .key:nth-child(4) { grid-area: 3 / 2; }
-.keyrow:nth-child(2) { align-items: flex-start; }
-.keyrow:nth-child(3) { margin-top: -38px; }
-.calc-credit { padding: 0 14px 10px; font-size: 11px; }
-.calc-credit a { color: var(--key); }
+.calc-console { flex: 0 0 170px; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--rule); background: var(--panel); }
+.calc-console[hidden] { display: none; }
+.calc-console-bar { display: flex; align-items: center; gap: 10px; padding: 4px 10px 4px 16px; font: 11px var(--ui); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.calc-console-bar .hint { flex: 1; text-transform: none; letter-spacing: 0; font-size: 11px; }
+.calc-console-bar button { font: 11px var(--ui); color: var(--muted); background: none; border: 0; border-radius: 2px; padding: 2px 6px; cursor: pointer; }
+.calc-console-bar button:hover { color: var(--ink); background: var(--body); }
+.calc-console-log { flex: 1; overflow: auto; padding: 4px 16px 8px; font: 12px/1.5 var(--mono); white-space: pre-wrap; word-break: break-word; user-select: text; }
+.calc-console-log .info { color: var(--key); }
+.calc-console-log .err { color: var(--warn); }
+.calc-console-log .emu { color: var(--muted); }
+.calc-bar button[aria-pressed="true"] { border-color: var(--key); color: var(--key); }
+.calc-drop { position: absolute; inset: 44px 12px 12px; z-index: 2; display: grid; place-items: center; font: 600 16px var(--ui); color: var(--key); background: rgba(7, 16, 39, .82); border: 2px dashed var(--key); border-radius: 10px; pointer-events: none; }

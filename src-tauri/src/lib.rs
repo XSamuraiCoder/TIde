@@ -86,7 +86,8 @@ pub fn run() {
             calc::calc_install_core,
             calc::calc_set_rom,
             calc::calc_read,
-            calc::calc_read_program
+            calc::calc_read_program,
+            calc::find_clibs
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

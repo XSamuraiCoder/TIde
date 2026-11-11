@@ -10,7 +10,7 @@ import { PY_CATALOG, registerPy2ez80, watchPython } from "./py2ez80-support"; //
 import { ASM_CATALOG, ASM_LANG, registerAsm } from "./asm-support";
 import { appVersion, checkForUpdate } from "./updater";
 import { createScm } from "./scm";
-import { createCalc } from "./calc";
+import { SEND_TYPES, createCalc } from "./calc";
 import { DOCS, createDocs, type DocLangId } from "./docs";
 import { registerIntellisense, watchModel } from "./intellisense";
 import { make8xp, tokenize } from "./build";
@@ -73,9 +73,12 @@ const docsView = createDocs($("docs"), () => { if (activeDoc()) editor.focus(); 
 const calc = createCalc({
   say: text => setMessage(text),
   pickRom: () => fs.pickFile("TI-84 Plus CE ROM", ["rom"]),
+  pickFiles: () => fs.pickFiles("TI files", SEND_TYPES),
+  readFile: path => fs.readBinary(path),
   layout: () => {
-    document.querySelector(".app")!.classList.toggle("with-calc", calc.visible);
+    // The calculator takes the editor area, like the docs page; only one of them shows at a time.
     $("act-calc").setAttribute("aria-pressed", String(calc.visible));
+    if (calc.visible) docsView.close();
   },
 });
 
@@ -192,6 +195,7 @@ function activate(id: string, note?: string) {
   if (!tabOrder.includes(id)) tabOrder.push(id);
   active = id;
   docsView.close();
+  if (calc.visible) calc.hide();
   editor.setModel(doc.model);
   applyEditorMode();
   editor.focus();
@@ -310,9 +314,10 @@ async function ensureEmulator(): Promise<boolean> {
 
 /** A built program ready to run: its file name, bytes, and (for the CEmu app) a path on disk. */
 interface Built { name: string; bytes: Uint8Array; path?: string }
+interface ForRun { programs: Built[]; launch: string; libs: Built[] }
 
 /** Builds the active TI-BASIC program, or the C project with make, into .8xp files to run. */
-async function buildForRun(): Promise<{ programs: Built[]; launch: string } | null> {
+async function buildForRun(): Promise<ForRun | null> {
   if (!fs.available) { setMessage("Running programs needs the desktop app."); return null; }
   if (getTarget() === "plus" && isBasic()) { setMessage("The emulator is a TI-84 Plus CE. Switch Target to CE to run this program."); return null; }
   if (usesMake()) {
@@ -323,21 +328,24 @@ async function buildForRun(): Promise<{ programs: Built[]; launch: string } | nu
     if (!built.length) { setMessage("The build made no .8xp in bin/, so there's nothing to run."); return null; }
     const programs = await Promise.all(built.map(async e => ({ name: e.name, path: e.path, bytes: await fs.readBinary(e.path) })));
     const launch = built.find(e => /\.8xp$/i.test(e.name))?.name.replace(/\.8xp$/i, "").toUpperCase() ?? "";
-    return { programs, launch };
+    // C programs that use graphx, keypadc or fileioc need the CE C libraries on the calculator.
+    const clibs = await fs.findClibs(root).catch(() => null);
+    const libs = clibs ? [{ name: "clibs.8xg", path: clibs, bytes: await fs.readBinary(clibs) }] : [];
+    return { programs, launch, libs };
   }
   const doc = activeDoc();
   if (!doc || doc.language !== "tibasic") { setMessage("Open a TI-BASIC program or a C project to run it."); return null; }
   if (isDirty(doc)) await saveDoc(doc);
   const { bytes, errors } = tokenize(doc.model.getValue());
   if (errors.length) setMessage(`${errors.length} character${errors.length === 1 ? "" : "s"} had no token and were skipped.`);
-  return { programs: [{ name: `${doc.label}.8xp`, bytes: make8xp(doc.label, bytes) }], launch: doc.label };
+  return { programs: [{ name: `${doc.label}.8xp`, bytes: make8xp(doc.label, bytes) }], launch: doc.label, libs: [] };
 }
 
 /** F5: builds and runs in the calculator panel, inside TIde. */
 async function runInEmulator() {
   try {
     const built = await buildForRun();
-    if (built) await calc.run(built.programs, built.launch);
+    if (built) await calc.run(built.programs, built.launch, built.libs);
   } catch (err) {
     setMessage(`Could not run: ${err}`);
   }
@@ -348,7 +356,7 @@ async function runInCemu() {
   try {
     const built = await buildForRun();
     if (!built) return;
-    const files = await Promise.all(built.programs.map(p => p.path ?? fs.emulator.stage(p.name.replace(/\.8xp$/i, ""), Array.from(p.bytes))));
+    const files = await Promise.all([...built.libs, ...built.programs].map(p => p.path ?? fs.emulator.stage(p.name.replace(/\.8xp$/i, ""), Array.from(p.bytes))));
     if (!(await ensureEmulator())) return;
     await fs.emulator.run(files, built.launch);
     setMessage(built.launch ? `Running ${built.launch} in CEmu` : "Sent to CEmu");
@@ -575,6 +583,7 @@ function catalogGroups(): { group: string; entries: { name: string; insert: stri
 
 /** Opens the docs page for the active tab's language, at the named entry if given. */
 function openDocs(name?: string) {
+  if (calc.visible) calc.hide();
   docsView.open(catalogLang() ?? undefined, name);
 }
 

@@ -71,6 +71,37 @@
         <div class="stage">
           <div id="editor"></div>
           <div class="docs" id="docs" hidden></div>
+          <div class="calc" id="calc" hidden>
+            <div class="calc-bar">
+              <span class="calc-name">Calculator <span id="calc-state"></span></span>
+              <button id="calc-send" type="button" title="Send programs, apps, appvars, groups, images or bundles to the calculator. You can also drop files here.">Send files…</button>
+              <button id="calc-cemu" type="button" title="Build and run in the CEmu app instead">Open in CEmu</button>
+              <button id="calc-console-toggle" type="button" title="Show or hide the console">Console</button>
+              <button id="calc-reset" type="button" title="Reset the calculator">Reset</button>
+              <button id="calc-close" type="button" title="Back to the editor (Esc on the bar)" aria-label="Close">×</button>
+            </div>
+            <div class="calc-setup" id="calc-setup" hidden>
+              <p id="calc-setup-text"></p>
+              <button id="calc-download" type="button" hidden>Download emulator core</button>
+              <button id="calc-rom" type="button" hidden>Choose ROM…</button>
+            </div>
+            <div class="calc-body" id="calc-screen">
+              <div class="calc-lcd-area" id="calc-lcd-area">
+                <div class="bezel"><canvas id="calc-lcd" width="320" height="240" tabindex="0" title="Click, then type with CEmu's keys: letters, digits and arrows, Enter, Esc (clear), Tab (2nd), ' (alpha), Home (mode), Delete (del), F1–F5 (graph keys), F12 (on). Hover a key to see its keys."></canvas></div>
+              </div>
+              <div class="calc-keypad" id="calc-keypad"></div>
+            </div>
+            <p class="hint calc-credit">Drop TI files here to send them. Emulation by <a href="https://github.com/CE-Programming/CEmu" target="_blank" rel="noreferrer">CEmu</a> (GPLv3).</p>
+            <div class="calc-console" id="calc-console">
+              <div class="calc-console-bar">
+                <span>Console</span>
+                <span class="hint">CEmu output, such as dbg_printf from C programs</span>
+                <button id="calc-console-clear" type="button">Clear</button>
+              </div>
+              <div class="calc-console-log" id="calc-console-log" role="log" aria-live="polite"></div>
+            </div>
+            <div class="calc-drop" id="calc-drop" hidden>Drop to send to the calculator</div>
+          </div>
           <div class="empty" id="empty">
             <img src="/app-icon.svg" alt="" width="96" height="96" />
             <strong>TIde</strong>
@@ -78,25 +109,6 @@
           </div>
         </div>
       </section>
-
-      <aside class="calc" id="calc" hidden>
-        <div class="side-title calc-title">
-          <span>Calculator <span id="calc-state"></span></span>
-          <button id="calc-cemu" type="button" title="Build and run in the CEmu app instead">Open in CEmu</button>
-          <button id="calc-reset" type="button" title="Reset the calculator" aria-label="Reset">⟲</button>
-          <button id="calc-close" type="button" title="Close" aria-label="Close">×</button>
-        </div>
-        <div class="calc-setup" id="calc-setup" hidden>
-          <p id="calc-setup-text"></p>
-          <button id="calc-download" type="button" hidden>Download emulator core</button>
-          <button id="calc-rom" type="button" hidden>Choose ROM…</button>
-        </div>
-        <div class="calc-body" id="calc-screen">
-          <div class="bezel"><canvas id="calc-lcd" width="320" height="240" tabindex="0" title="Click, then type: digits, arrows, Enter, Backspace (del), Esc (clear), Shift (2nd), Ctrl (alpha)"></canvas></div>
-          <div class="calc-keypad" id="calc-keypad"></div>
-        </div>
-        <p class="hint calc-credit">Emulation by <a href="https://github.com/CE-Programming/CEmu" target="_blank" rel="noreferrer">CEmu</a> (GPLv3).</p>
-      </aside>
 
       <footer class="status" data-kind="tibasic">
         <span id="status-project"></span>
