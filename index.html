@@ -16,6 +16,9 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10"/><path d="M18 9c0 5-12 3-12 8"/></svg>
           <span class="badge" id="scm-badge" hidden></span>
         </button>
+        <button id="act-calc" type="button" title="Calculator (F5 runs the program in it)" aria-label="Calculator">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><rect x="8" y="5" width="8" height="5"/><path d="M8.5 14h.01M12 14h.01M15.5 14h.01M8.5 17.5h.01M12 17.5h.01M15.5 17.5h.01"/></svg>
+        </button>
         <button id="act-docs" type="button" title="Docs (Ctrl+J)" aria-label="Docs">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21a2 2 0 0 1 2-2h13v2"/><path d="M8 7h7M8 11h5"/></svg>
         </button>
@@ -76,12 +79,32 @@
         </div>
       </section>
 
+      <aside class="calc" id="calc" hidden>
+        <div class="side-title calc-title">
+          <span>Calculator <span id="calc-state"></span></span>
+          <button id="calc-cemu" type="button" title="Build and run in the CEmu app instead">Open in CEmu</button>
+          <button id="calc-reset" type="button" title="Reset the calculator" aria-label="Reset">⟲</button>
+          <button id="calc-close" type="button" title="Close" aria-label="Close">×</button>
+        </div>
+        <div class="calc-setup" id="calc-setup" hidden>
+          <p id="calc-setup-text"></p>
+          <button id="calc-download" type="button" hidden>Download emulator core</button>
+          <button id="calc-rom" type="button" hidden>Choose ROM…</button>
+        </div>
+        <div class="calc-body" id="calc-screen">
+          <div class="bezel"><canvas id="calc-lcd" width="320" height="240" tabindex="0" title="Click, then type: digits, arrows, Enter, Backspace (del), Esc (clear), Shift (2nd), Ctrl (alpha)"></canvas></div>
+          <div class="calc-keypad" id="calc-keypad"></div>
+        </div>
+        <p class="hint calc-credit">Emulation by <a href="https://github.com/CE-Programming/CEmu" target="_blank" rel="noreferrer">CEmu</a> (GPLv3).</p>
+      </aside>
+
       <footer class="status" data-kind="tibasic">
         <span id="status-project"></span>
         <button id="status-branch" type="button" title="Source Control" hidden></button>
         <button id="problems" type="button" hidden>No problems</button>
         <span id="status-msg"></span>
         <button id="export" type="button" hidden>Build .8xp</button>
+        <button id="run" type="button" title="Build and run in CEmu, the TI-84 Plus CE emulator (F5)" hidden>▶ Run</button>
         <button id="target" type="button" title="Which calculator TI-BASIC programs are for. Sets the screen size checks and which commands are available.">Target: CE</button>
         <button id="gutter" type="button">Gutter: ":"</button>
         <span id="status-pos"></span>

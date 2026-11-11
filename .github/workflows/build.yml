@@ -157,10 +157,40 @@ jobs:
           printf 'Uploading: %s\n' "${files[@]}"
           gh release upload latest "${files[@]}" --repo "$REPO" --clobber
 
+  calculator:
+    name: Calculator core (CEmu)
+    # CEmu's core compiled to WebAssembly for the calculator panel. TIde downloads it on first use.
+    # CEmu is GPLv3: the source is the pinned commit below, named in WebCEmu-SOURCE.txt.
+    needs: prepare
+    runs-on: ubuntu-latest
+    env:
+      CEMU_COMMIT: 430510c539cce0886b60fd51c8ff1b8d0709c2f9
+    steps:
+      - name: Build WebCEmu
+        run: |
+          set -euo pipefail
+          git clone --quiet https://github.com/CE-Programming/CEmu.git cemu
+          git -C cemu checkout --quiet "$CEMU_COMMIT"
+          # CEmu's own flags, minus --memory-init-file, which current Emscripten no longer accepts.
+          docker run --rm -v "$PWD/cemu:/src" -w /src/core emscripten/emsdk:3.1.74 \
+            make -f emscripten.mk -j"$(nproc)" \
+            "EMFLAGS=-s TOTAL_MEMORY=33554432 -s ALLOW_MEMORY_GROWTH=0 -s WASM=1 -s EXPORT_ES6=1 -s MODULARIZE=1 -s EXPORT_NAME='WebCEmu' -s INVOKE_RUN=0 -s NO_EXIT_RUNTIME=1 -s ASSERTIONS=0"
+          {
+            echo "WebCEmu.js and WebCEmu.wasm are CEmu (GPLv3), built unmodified from"
+            echo "https://github.com/CE-Programming/CEmu/tree/$CEMU_COMMIT"
+            echo "with core/emscripten.mk."
+          } > WebCEmu-SOURCE.txt
+
+      - name: Upload to the latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: gh release upload latest cemu/core/WebCEmu.js cemu/core/WebCEmu.wasm WebCEmu-SOURCE.txt --repo "$REPO" --clobber
+
   finish:
     name: Finish latest release
     # Runs only if every platform built, so a failed build keeps that platform's old installers.
-    needs: [prepare, build]
+    needs: [prepare, build, calculator]
     runs-on: ubuntu-latest
 
     steps:

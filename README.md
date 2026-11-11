@@ -32,6 +32,14 @@ Opening a folder with a `Makefile`, `makefile` or `GNUmakefile` in its root trea
 
 Building needs the [CE C toolchain](https://github.com/CE-Programming/toolchain) with `make` on your `PATH`. The toolchain only targets the CE.
 
+## Calculator
+
+The **Calculator** panel (the calculator icon in the activity bar) runs a TI-84 Plus CE inside TIde. **▶ Run** in the status bar (F5) builds the active TI-BASIC program, or the C project with `make`, sends it to the calculator and launches it. Click the screen to type on it: digits and operators, arrows, Enter, Backspace (del), Esc (clear), Shift (2nd) and Ctrl (alpha), or click the keys.
+
+The first time, the panel downloads the emulator core (about 300 KB) and asks for a ROM dumped from your own calculator. TIde keeps both in its data folder; it never ships or downloads a ROM. CEmu only emulates the CE, so set the target to CE to run TI-BASIC.
+
+The emulator is [CEmu](https://github.com/CE-Programming/CEmu)'s core, compiled to WebAssembly by the release workflow from a pinned CEmu commit and published next to the installers (GPLv3; see `WebCEmu-SOURCE.txt` on the release). TIde downloads it separately rather than including it. **Open in CEmu** in the panel runs the program in the full CEmu app instead, which TIde downloads the same way.
+
 ## Source Control
 
 The **Source Control** view (`Ctrl+Shift+G`) shows the git status of the open folder: staged changes and changes, with **+** and **−** to stage and unstage a file or all of them. Type a message and press **Commit** or `Ctrl+Enter`; with nothing staged it commits every change. **Pull** (fast-forward only) and **Push** work once the branch has an upstream. The status bar shows the branch and how far it is ahead or behind, and the activity bar shows how many files changed. It uses your own `git`, so your config, credentials and hooks apply.
@@ -61,6 +69,7 @@ Use Cmd instead of Ctrl on macOS.
 |---|---|
 | `Ctrl+S` | Save |
 | `Ctrl+E` | Build |
+| `F5` | Build and run in the calculator |
 | `Ctrl+Shift+E` | Build a TI-BASIC program to a new location |
 | `Ctrl+J` | Search the docs |
 | `Ctrl+Shift+J` | Open or close the docs page |
@@ -105,5 +114,7 @@ cargo test --lib
 ```
 
 ## Credits
+
+- [CEmu](https://github.com/CE-Programming/CEmu) by the CE Programming team: its core runs the calculator panel, downloaded on first use.
 
 Claude was used to debug and fix errors in this program.

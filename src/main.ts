@@ -10,9 +10,10 @@ import { PY_CATALOG, registerPy2ez80, watchPython } from "./py2ez80-support"; //
 import { ASM_CATALOG, ASM_LANG, registerAsm } from "./asm-support";
 import { appVersion, checkForUpdate } from "./updater";
 import { createScm } from "./scm";
+import { createCalc } from "./calc";
 import { DOCS, createDocs, type DocLangId } from "./docs";
 import { registerIntellisense, watchModel } from "./intellisense";
-import { tokenize } from "./build";
+import { make8xp, tokenize } from "./build";
 import { exportProgram } from "./export";
 import { fs, normalizeName, store, type Entry } from "./store";
 
@@ -53,6 +54,7 @@ const els = {
   tree: $("tree"),
   treeEmpty: $("tree-empty"),
   exportBtn: $<HTMLButtonElement>("export"),
+  run: $<HTMLButtonElement>("run"),
 };
 
 function h<K extends keyof HTMLElementTagNameMap>(
@@ -67,6 +69,15 @@ function h<K extends keyof HTMLElementTagNameMap>(
 // ── State ──────────────────────────────────────────────────────────────────
 
 const docsView = createDocs($("docs"), () => { if (activeDoc()) editor.focus(); });
+
+const calc = createCalc({
+  say: text => setMessage(text),
+  pickRom: () => fs.pickFile("TI-84 Plus CE ROM", ["rom"]),
+  layout: () => {
+    document.querySelector(".app")!.classList.toggle("with-calc", calc.visible);
+    $("act-calc").setAttribute("aria-pressed", String(calc.visible));
+  },
+});
 
 const scm = createScm({
   root: () => project?.root ?? null,
@@ -250,11 +261,12 @@ async function saveActive() {
 }
 
 /** Saves every changed project file, runs make in the folder, and shows the result in the status bar. */
-async function buildProject() {
-  if (!project || building) return;
+/** Saves, runs make, and reports the result. Resolves true when the build succeeded. */
+async function buildProject(): Promise<boolean> {
+  if (!project || building) return false;
   const { root, name } = project;
   for (const doc of docs.values()) {
-    if (doc.id.startsWith("file:") && isDirty(doc) && !(await saveDoc(doc))) return;
+    if (doc.id.startsWith("file:") && isDirty(doc) && !(await saveDoc(doc))) return false;
   }
   building = true;
   els.exportBtn.disabled = true;
@@ -272,11 +284,76 @@ async function buildProject() {
     }));
     renderTree();
     void scm.refresh();
+    return ok;
   } catch (err) {
     setMessage(`Could not build ${name}: ${err}`);
+    return false;
   } finally {
     building = false;
     els.exportBtn.disabled = false;
+  }
+}
+
+/** Downloads CEmu the first time, after asking. Resolves true once it is installed. */
+async function ensureEmulator(): Promise<boolean> {
+  if (await fs.emulator.status()) return true;
+  if (!confirm("Running needs CEmu, the TI-84 Plus CE emulator. Download it from its GitHub releases (about 20 MB)?\n\nThe first time it starts, CEmu asks for your calculator's ROM.")) return false;
+  setMessage("Downloading CEmu…");
+  try {
+    await fs.emulator.install();
+    return true;
+  } catch (err) {
+    setMessage(`Could not install CEmu: ${err}`);
+    return false;
+  }
+}
+
+/** A built program ready to run: its file name, bytes, and (for the CEmu app) a path on disk. */
+interface Built { name: string; bytes: Uint8Array; path?: string }
+
+/** Builds the active TI-BASIC program, or the C project with make, into .8xp files to run. */
+async function buildForRun(): Promise<{ programs: Built[]; launch: string } | null> {
+  if (!fs.available) { setMessage("Running programs needs the desktop app."); return null; }
+  if (getTarget() === "plus" && isBasic()) { setMessage("The emulator is a TI-84 Plus CE. Switch Target to CE to run this program."); return null; }
+  if (usesMake()) {
+    const root = project!.root;
+    if (!(await buildProject())) return null;
+    const bin = `${root}${root.includes("\\") ? "\\" : "/"}bin`;
+    const built = (await fs.readDir(bin).catch(() => [] as Entry[])).filter(e => !e.isDir && /\.8x[pv]$/i.test(e.name));
+    if (!built.length) { setMessage("The build made no .8xp in bin/, so there's nothing to run."); return null; }
+    const programs = await Promise.all(built.map(async e => ({ name: e.name, path: e.path, bytes: await fs.readBinary(e.path) })));
+    const launch = built.find(e => /\.8xp$/i.test(e.name))?.name.replace(/\.8xp$/i, "").toUpperCase() ?? "";
+    return { programs, launch };
+  }
+  const doc = activeDoc();
+  if (!doc || doc.language !== "tibasic") { setMessage("Open a TI-BASIC program or a C project to run it."); return null; }
+  if (isDirty(doc)) await saveDoc(doc);
+  const { bytes, errors } = tokenize(doc.model.getValue());
+  if (errors.length) setMessage(`${errors.length} character${errors.length === 1 ? "" : "s"} had no token and were skipped.`);
+  return { programs: [{ name: `${doc.label}.8xp`, bytes: make8xp(doc.label, bytes) }], launch: doc.label };
+}
+
+/** F5: builds and runs in the calculator panel, inside TIde. */
+async function runInEmulator() {
+  try {
+    const built = await buildForRun();
+    if (built) await calc.run(built.programs, built.launch);
+  } catch (err) {
+    setMessage(`Could not run: ${err}`);
+  }
+}
+
+/** Builds and runs in the CEmu app instead, reusing the emulator window TIde opened before. */
+async function runInCemu() {
+  try {
+    const built = await buildForRun();
+    if (!built) return;
+    const files = await Promise.all(built.programs.map(p => p.path ?? fs.emulator.stage(p.name.replace(/\.8xp$/i, ""), Array.from(p.bytes))));
+    if (!(await ensureEmulator())) return;
+    await fs.emulator.run(files, built.launch);
+    setMessage(built.launch ? `Running ${built.launch} in CEmu` : "Sent to CEmu");
+  } catch (err) {
+    setMessage(`Could not run in CEmu: ${err}`);
   }
 }
 
@@ -590,6 +667,7 @@ function applyEditorMode() {
   els.target.textContent = `Target: ${TARGETS[getTarget()].label}`;
   const make = usesMake();
   els.exportBtn.hidden = !make && (!basic || !activeDoc());
+  els.run.hidden = !fs.available || els.exportBtn.hidden;
   els.exportBtn.textContent = make ? "Build" : "Build .8xp";
   els.exportBtn.title = make
     ? `Runs make in ${project?.name} (Ctrl+E). Saves changed files first.`
@@ -663,9 +741,18 @@ els.docList.addEventListener("keydown", docListKeys);
 monaco.editor.onDidChangeMarkers(renderProblems);
 els.problems.addEventListener("click", () => { editor.focus(); void editor.getAction("editor.action.marker.next")?.run(); });
 els.exportBtn.addEventListener("click", () => void exportActive());
+els.run.addEventListener("click", () => void runInEmulator());
+// F5 runs, as in most IDEs. It also stops the webview from reloading the page.
+window.addEventListener("keydown", e => {
+  if (e.key !== "F5") return;
+  e.preventDefault();
+  if (!els.run.hidden) void runInEmulator();
+});
 $("act-files").addEventListener("click", () => showPane("files", true));
 $("act-docs").addEventListener("click", () => showPane("docs", true));
 $("act-scm").addEventListener("click", () => showPane("scm", true));
+$("act-calc").addEventListener("click", () => void (calc.visible ? calc.hide() : calc.show()));
+$("calc-cemu").addEventListener("click", () => void runInCemu());
 $("status-branch").addEventListener("click", () => showPane("scm"));
 window.addEventListener("focus", () => void scm.refresh()); // files may have changed outside TIde
 els.openFolder.addEventListener("click", () => void openFolder());

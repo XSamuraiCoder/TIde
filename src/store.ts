@@ -56,12 +56,23 @@ export interface Fs {
   available: boolean;
   pickFolder(): Promise<string | null>;
   pickSaveFile(defaultName: string): Promise<string | null>;
+  pickFile(label: string, extensions: string[]): Promise<string | null>;
+  readBinary(path: string): Promise<Uint8Array>;
   readDir(path: string): Promise<Entry[]>;
   readFile(path: string): Promise<string>;
   writeFile(path: string, contents: string): Promise<void>;
   writeBinary(path: string, bytes: Uint8Array): Promise<void>;
   runMake(dir: string): Promise<{ ok: boolean; output: string }>;
   git: Git;
+  emulator: Emulator;
+}
+
+/** CEmu, downloaded on first use and started as its own program. */
+export interface Emulator {
+  status(): Promise<string | null>;
+  install(): Promise<string>;
+  stage(name: string, bytes: number[]): Promise<string>;
+  run(files: string[], launch?: string): Promise<void>;
 }
 
 const unavailable = () => Promise.reject(new Error("Opening folders needs the desktop app."));
@@ -74,6 +85,12 @@ export const fs: Fs = isTauri
         const picked = await open({ directory: true, multiple: false });
         return typeof picked === "string" ? picked : null;
       },
+      async pickFile(label, extensions) {
+        const { open } = await import("@tauri-apps/plugin-dialog");
+        const picked = await open({ multiple: false, filters: [{ name: label, extensions }] });
+        return typeof picked === "string" ? picked : null;
+      },
+      readBinary: async path => new Uint8Array(await invoke<ArrayBuffer>("calc_read_program", { path })),
       async pickSaveFile(defaultName) {
         const { save } = await import("@tauri-apps/plugin-dialog");
         const picked = await save({
@@ -96,15 +113,24 @@ export const fs: Fs = isTauri
         pull: dir => invoke<GitResult>("git_pull", { dir }),
         init: dir => invoke<GitResult>("git_init", { dir }),
       },
+      emulator: {
+        status: () => invoke<string | null>("emulator_status"),
+        install: () => invoke<string>("emulator_install"),
+        stage: (name, bytes) => invoke<string>("emulator_stage", { name, bytes }),
+        run: (files, launch) => invoke<void>("emulator_run", { files, launch: launch ?? null }),
+      },
     }
   : {
       available: false,
       pickFolder: unavailable,
       pickSaveFile: unavailable,
+      pickFile: unavailable,
+      readBinary: unavailable,
       readDir: unavailable,
       readFile: unavailable,
       writeFile: unavailable,
       writeBinary: unavailable,
       runMake: unavailable,
+      emulator: { status: unavailable, install: unavailable, stage: unavailable, run: unavailable },
       git: { status: unavailable, stage: unavailable, unstage: unavailable, commit: unavailable, push: unavailable, pull: unavailable, init: unavailable },
     };

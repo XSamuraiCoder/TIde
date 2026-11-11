@@ -2,6 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
 
+mod calc;
+mod emulator;
 mod git;
 mod project;
 
@@ -75,7 +77,16 @@ pub fn run() {
             git::git_commit,
             git::git_push,
             git::git_pull,
-            git::git_init
+            git::git_init,
+            emulator::emulator_status,
+            emulator::emulator_install,
+            emulator::emulator_stage,
+            emulator::emulator_run,
+            calc::calc_files,
+            calc::calc_install_core,
+            calc::calc_set_rom,
+            calc::calc_read,
+            calc::calc_read_program
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
