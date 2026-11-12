@@ -34,7 +34,7 @@ function archived(file: Uint8Array): Uint8Array {
 }
 
 /** The files inside a bundle (a zip): stored or deflated entries, unpacked with the browser's own inflater. */
-async function unbundle(bundle: TiFile): Promise<TiFile[]> {
+export async function unbundle(bundle: TiFile): Promise<TiFile[]> {
   const b = bundle.bytes, view = new DataView(b.buffer, b.byteOffset, b.byteLength);
   let end = b.length - 22;
   while (end >= 0 && view.getUint32(end, true) !== 0x06054b50) end--; // end of central directory
@@ -89,6 +89,15 @@ const KEYPAD: Key[][] = [
   [k("on", 2, 0, ["F12"]), k("0", 3, 0, ["0", " "], "num"), k(".", 4, 0, [".", ":"], "num"), k("(−)", 5, 0, ["~", "?"], "num"), k("enter", 6, 0, ["Enter"], "op")],
 ];
 const ARROWS: Key[] = [k("▲", 7, 3, ["ArrowUp"]), k("◀", 7, 1, ["ArrowLeft"]), k("▶", 7, 2, ["ArrowRight"]), k("▼", 7, 0, ["ArrowDown"])];
+/** Key names for key.press(…): the label in lower case, plus a few spellings. */
+const MACRO_KEYS = new Map<string, Key>([
+  ...KEYPAD.flat().map(key => [key.label.toLowerCase(), key] as [string, Key]),
+  ...([["up", 0], ["left", 1], ["right", 2], ["down", 3]] as const).map(([n, i]) => [n, ARROWS[i]] as [string, Key]),
+  ...([["yequ", "y="], ["sto", "sto→"], ["store", "sto→"], ["x^2", "x²"], ["square", "x²"], ["x^-1", "x⁻¹"], ["inverse", "x⁻¹"],
+    ["neg", "(−)"], ["negative", "(−)"], ["-", "−"], ["*", "×"], ["/", "÷"], ["xtθn", "x,t,θ,n"], ["xton", "x,t,θ,n"],
+    ["power", "^"], ["second", "2nd"], ["delete", "del"], ["window", "window"]] as const)
+    .map(([alias, label]) => [alias, KEYPAD.flat().find(key => key.label.toLowerCase() === label)!] as [string, Key]),
+]);
 const BY_KBD = new Map<string, Key>([...KEYPAD.flat(), ...ARROWS].flatMap(key => (key.kbd ?? []).map(name => [name, key] as const)));
 /** How a binding reads in a tooltip. */
 const keyName = (name: string) => (name === " " ? "Space" : name.length === 1 ? name.toUpperCase() : name.replace(/^Page/, "Page "));
@@ -102,9 +111,13 @@ export interface Calc {
   show(): Promise<void>;
   hide(): void;
   readonly visible: boolean;
+  /** Whether the console under the calculator is shown. */
+  consoleShown: boolean;
   /** Sends programs to the calculator and launches `launch` once they arrive. */
   /** Libraries (like clibs.8xg) are sent once per calculator session, before the programs. */
   run(files: TiFile[], launch: string, libs?: TiFile[]): Promise<void>;
+  /** Runs a calculator macro from tide.json, such as key.press(enter). */
+  macro(name: string, arg: string): Promise<void>;
   /** Sends any TI files, unpacking bundles. */
   send(files: TiFile[]): Promise<void>;
 }
@@ -371,6 +384,8 @@ export function createCalc(opts: {
 
   const view: Calc = {
     get visible() { return !ui.panel.hidden; },
+    get consoleShown() { return !ui.console.hidden; },
+    set consoleShown(on: boolean) { showConsole(on); },
     async show() {
       ui.panel.hidden = false;
       opts.layout();
@@ -422,6 +437,46 @@ export function createCalc(opts: {
       }
       if (skipped.length) say(`Skipped ${skipped.map(f => f.name).join(", ")}: not a TI file the calculator can receive.`);
       else if (sendable.length) say(`Sent ${sendable.length === 1 ? sendable[0].name : `${sendable.length} files`} to the calculator.`);
+    },
+    async macro(name, arg) {
+      await view.show();
+      if (!emu) throw new Error("Set up the calculator to run macros.");
+      const sleep = (ms: number) => new Promise(r => window.setTimeout(r, ms));
+      // OS key codes go through the OS one at a time; wait until it has taken them all.
+      const typed = async (codes: number[]) => {
+        keyQueue.push(...codes);
+        for (let i = 0; keyQueue.length && i < 400; i++) await sleep(25);
+        await sleep(150);
+      };
+      switch (name) {
+        case "key.press": {
+          const key = MACRO_KEYS.get(arg.toLowerCase());
+          if (!key) throw new Error(`key.press doesn't know "${arg}". Use a key name such as enter, clear, 2nd, alpha, up or 5.`);
+          press(key, true); await sleep(120); press(key, false); await sleep(180);
+          break;
+        }
+        case "key.type":
+          await typed([...arg.toUpperCase()].map(letterKey).filter(Boolean));
+          break;
+        case "program.run": case "program.open":
+          await typed([KEY_CLEAR, KEY_PRGM, ...[...arg.toUpperCase()].map(letterKey).filter(Boolean), KEY_ENTER]);
+          break;
+        case "app.open": {
+          // The apps menu jumps to the first app starting with a letter; Enter opens the selected one.
+          const apps = MACRO_KEYS.get("apps")!;
+          press(apps, true); await sleep(120); press(apps, false); await sleep(400);
+          const first = letterKey(arg.charAt(0).toUpperCase());
+          if (first) await typed([first]);
+          await typed([KEY_ENTER]);
+          break;
+        }
+        case "wait":
+          await sleep(Math.max(0, Number(arg) || 0));
+          break;
+        default:
+          throw new Error(`Unknown macro ${name}.`);
+      }
+      say(`${name}(${arg})`);
     },
     async run(programs, launch, libs = []) {
       const newLibs = libs.filter(l => !sentLibs.has(`${l.name}:${l.bytes.length}`));

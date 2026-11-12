@@ -262,3 +262,88 @@ body { font: 13px/1.4 var(--ui); background: var(--body); color: var(--ink); ove
 .calc-console-log .emu { color: var(--muted); }
 .calc-bar button[aria-pressed="true"] { border-color: var(--key); color: var(--key); }
 .calc-drop { position: absolute; inset: 44px 12px 12px; z-index: 2; display: grid; place-items: center; font: 600 16px var(--ui); color: var(--key); background: rgba(7, 16, 39, .82); border: 2px dashed var(--key); border-radius: 10px; pointer-events: none; }
+
+/* Tabs that aren't a text editor: Settings, TI file metadata, unsupported files */
+.activity .settings { margin-top: auto; margin-bottom: 4px; }
+.view-host { position: absolute; inset: 0; z-index: 4; overflow: auto; background: var(--paper); }
+.view-host[hidden] { display: none; }
+.tab.view-tab { font-family: var(--ui); }
+.file-view, .settings-page { max-width: 900px; padding: 22px 28px 40px; }
+.file-view h1, .settings-page h1 { font: 600 20px var(--ui); }
+.file-view h2, .settings-page h2 { font: 600 13px var(--ui); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 22px 0 8px; }
+.file-view .title-row { display: flex; align-items: center; gap: 12px; }
+.file-view .title-row h1, .file-view .title-row h2 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.file-view .title-row h2 { text-transform: none; letter-spacing: 0; font-family: var(--mono); color: var(--ink); }
+.file-view .notice { margin: 10px 0 4px; color: var(--warn); }
+.file-view .row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.file-view button, .settings-button { font: inherit; font-size: 12.5px; color: var(--ink); background: var(--body); border: 1px solid var(--rule); border-radius: 3px; padding: 5px 12px; cursor: pointer; }
+.file-view button:hover, .settings-button:hover { border-color: var(--key); }
+.file-view button.primary { color: var(--navy); background: var(--key); border-color: var(--key); font-weight: 600; }
+.file-view select, .settings-page select, .settings-page input[type="number"], .settings-page input[type="search"] { font: inherit; font-size: 12.5px; color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 3px; padding: 4px 8px; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin-top: 14px; }
+.facts dt { color: var(--muted); }
+.file-view table { border-collapse: collapse; width: 100%; }
+.file-view th, .file-view td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--rule); }
+.file-view th { font-weight: 600; color: var(--muted); font-size: 12px; }
+.file-view .mono, .file-view pre { font-family: var(--mono); }
+.file-view pre { font-size: 12.5px; line-height: 1.55; background: var(--lcd); border: 1px solid var(--rule); border-radius: 3px; padding: 10px 14px; overflow: auto; white-space: pre; user-select: text; }
+.file-view details { margin-top: 10px; }
+.file-view summary { cursor: pointer; color: var(--muted); }
+/* Settings */
+.settings-head { display: flex; align-items: center; gap: 16px; margin-bottom: 4px; }
+.settings-head h1 { flex: 1; }
+.settings-head input { width: 260px; }
+.setting { display: flex; align-items: center; gap: 24px; padding: 12px 0; border-bottom: 1px solid color-mix(in srgb, var(--rule) 60%, transparent); }
+.setting-text { flex: 1; min-width: 0; }
+.setting-text label { font-weight: 600; }
+.setting-text p { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.setting-control input[type="number"] { width: 70px; }
+.switch-toggle { position: relative; display: inline-block; width: 36px; height: 20px; }
+.switch-toggle input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.switch-toggle span { position: absolute; inset: 0; border-radius: 10px; background: var(--body); box-shadow: inset 0 0 0 1px var(--rule); pointer-events: none; transition: background .15s; }
+.switch-toggle span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
+.switch-toggle input:checked + span { background: var(--key); }
+.switch-toggle input:checked + span::after { transform: translateX(16px); background: var(--navy); }
+.switch-toggle input:focus-visible + span { outline: 2px solid var(--key); outline-offset: 2px; }
+.status select { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; height: 22px; padding: 0 6px; appearance: none; }
+.status select:hover { background: rgba(255, 255, 255, .14); }
+.status select[hidden] { display: none; }
+.status select option, .status select optgroup { color: var(--ink); background: var(--panel); }
+
+/* Output tab and the tide.json button */
+.output-view { display: flex; flex-direction: column; height: 100%; padding: 18px 28px 20px; }
+.output-view .title-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.output-view h1 { flex: 1; font: 600 20px var(--ui); }
+.output-view button { font: inherit; font-size: 12.5px; color: var(--ink); background: var(--body); border: 1px solid var(--rule); border-radius: 3px; padding: 4px 12px; cursor: pointer; }
+.output-log { flex: 1; min-height: 0; overflow: auto; margin: 0; padding: 10px 14px; font: 12.5px/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; background: var(--lcd); border: 1px solid var(--rule); border-radius: 3px; user-select: text; }
+.output-log .cmd { color: var(--key); }
+.output-log .ok { color: #86d9a8; }
+.output-log .err { color: var(--warn); }
+.project-head #project-file[hidden] { display: none; }
+
+/* Right-click menus */
+.context-menu { position: fixed; z-index: 100; min-width: 200px; padding: 4px; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; box-shadow: 0 10px 28px rgba(0, 0, 0, .45); }
+.context-menu button { display: flex; align-items: center; gap: 24px; width: 100%; padding: 5px 10px; font: 12.5px var(--ui); color: var(--ink); text-align: left; background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.context-menu button span { flex: 1; }
+.context-menu button kbd { font: 11.5px var(--ui); color: var(--muted); }
+.context-menu button:focus, .context-menu button:hover { outline: none; background: var(--key-wash); }
+.context-menu button:disabled { color: var(--muted); opacity: .55; cursor: default; background: none; }
+.context-menu .sep { height: 1px; margin: 4px 6px; background: var(--rule); }
+
+/* Explorer header: File menu and icon buttons */
+.side-title-row { display: flex; align-items: center; padding-right: 8px; }
+.side-title-row > span { flex: 1; }
+.menu-button { font: 11px var(--ui); letter-spacing: 0; text-transform: none; color: var(--muted); background: none; border: 1px solid transparent; border-radius: 3px; padding: 1px 6px; cursor: pointer; }
+.menu-button:hover, .menu-button:focus-visible { color: var(--ink); border-color: var(--rule); background: var(--body); }
+.project-head .icon-button { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; color: var(--muted); background: none; border: 0; border-radius: 3px; cursor: pointer; }
+.project-head .icon-button:hover { color: var(--ink); background: var(--body); }
+.project-head .icon-button[hidden] { display: none; }
+.project-head .icon-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* The name box for a new file or folder, in the tree */
+#tree li.creating { position: relative; height: 24px; }
+#tree .name-input { flex: 1; min-width: 0; height: 20px; padding: 0 4px; font: 12.5px var(--mono); color: var(--ink); background: var(--paper); border: 1px solid var(--key); border-radius: 2px; outline: none; }
+#tree li.invalid .name-input { border-color: var(--danger); }
+#tree .name-problem { position: absolute; left: 24px; right: 8px; top: 23px; z-index: 3; padding: 4px 6px; font: 12px var(--ui); white-space: normal; color: var(--ink); background: color-mix(in srgb, var(--danger) 30%, var(--panel)); border: 1px solid var(--danger); }
+#tree .name-problem[hidden] { display: none; }
+.context-menu button.shifted span { color: var(--danger); }

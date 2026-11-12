@@ -66,6 +66,9 @@ export interface Fs {
   writeFile(path: string, contents: string): Promise<void>;
   writeBinary(path: string, bytes: Uint8Array): Promise<void>;
   runMake(dir: string): Promise<{ ok: boolean; output: string }>;
+  runCommand(dir: string, command: string, args: string[]): Promise<{ ok: boolean; output: string }>;
+  createDir(path: string): Promise<void>;
+  deletePath(path: string, permanent: boolean): Promise<void>;
   git: Git;
   emulator: Emulator;
 }
@@ -99,7 +102,7 @@ export const fs: Fs = isTauri
         return Array.isArray(picked) ? picked : typeof picked === "string" ? [picked] : [];
       },
       findClibs: projectRoot => invoke<string | null>("find_clibs", { projectRoot }),
-      readBinary: async path => new Uint8Array(await invoke<ArrayBuffer>("calc_read_program", { path })),
+      readBinary: async path => new Uint8Array(await invoke<ArrayBuffer>("read_binary_file", { path })),
       async pickSaveFile(defaultName) {
         const { save } = await import("@tauri-apps/plugin-dialog");
         const picked = await save({
@@ -113,6 +116,9 @@ export const fs: Fs = isTauri
       writeFile: (path, contents) => invoke<void>("write_text_file", { path, contents }),
       writeBinary: (path, bytes) => invoke<void>("write_binary_file", { path, bytes: Array.from(bytes) }),
       runMake: dir => invoke<{ ok: boolean; output: string }>("run_make", { dir }),
+      createDir: path => invoke<void>("create_dir", { path }),
+      deletePath: (path, permanent) => invoke<void>("delete_path", { path, permanent }),
+      runCommand: (dir, command, args) => invoke<{ ok: boolean; output: string }>("run_command", { dir, command, args }),
       git: {
         status: dir => invoke<GitStatus>("git_status", { dir }),
         stage: (dir, paths) => invoke<GitResult>("git_stage", { dir, paths }),
@@ -142,6 +148,9 @@ export const fs: Fs = isTauri
       writeFile: unavailable,
       writeBinary: unavailable,
       runMake: unavailable,
+      runCommand: unavailable,
+      createDir: unavailable,
+      deletePath: unavailable,
       emulator: { status: unavailable, install: unavailable, stage: unavailable, run: unavailable },
       git: { status: unavailable, stage: unavailable, unstage: unavailable, commit: unavailable, push: unavailable, pull: unavailable, init: unavailable },
     };

@@ -61,6 +61,18 @@ The desktop app checks the `latest` release when it starts. If there is a newer 
 
 Releases use the version in `src-tauri/tauri.conf.json` (also set it in `package.json` and `Cargo.toml`); installed apps are offered an update only when it goes up, so bump it to ship one. Update files are signed. The workflow needs the signing key as the `TAURI_SIGNING_PRIVATE_KEY` repository secret (and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if the key has one). The public key is in `tauri.conf.json`.
 
+## Files and settings
+
+Project files open in the encoding they're in: UTF-8, UTF-16 (from its byte-order mark), or, for other text, the encoding set in Settings (Windows 1252 to start with). The status bar shows a file's encoding; pick one there to reopen the file in it or save it in it. TIde reads over 25 encodings and saves all but the multi-byte East Asian ones. A binary file opens in a tab that says so, with a hex preview and an option to open it as text anyway.
+
+TI files (`.8xp`, `.8xv`, `.8xg`, `.8ek`, `.b84` and the rest) open as a summary: the comment, each variable's name, type, size, archive flag and version, and whether the checksum is valid. Programs show their TI-BASIC, with **Open as program** to copy one into your programs; Flash apps and OS files show their header, and bundles list their contents. **Send to calculator** sends the file.
+
+**Settings** (the gear at the bottom of the activity bar, or `Ctrl+,`) covers the editor (font size, tab size, word wrap, minimap, whitespace), TI-BASIC (calculator, gutter, screen-width ruler), the encoding for other text, the calculator console and `clibs.8xg`, source control and update checks.
+
+## Project file
+
+A folder can have `.tide/tide.json` (**Settings → Project** creates one) with `calculator`, `build` (a command line instead of `make`), `prerun` (steps after building and before sending), `postrun` (steps after the program starts), `send` (files to send, such as `bin/*.8xp`), `program` (what to start), `libraries`, `runIn` (`calculator` or `cemu`), `scripts` (named command lines in the status bar's Scripts menu) and `editor` (settings for this project). Steps are command lines or calculator macros, such as `["app.open(AsmHook2)", "key.press(enter)"]`: `key.press(key)`, `key.type("TEXT")`, `program.run(NAME)` (or `program.open`), `app.open(NAME)` and `wait(ms)`. Comments are allowed, and the editor completes and checks it. Build, prerun and script output goes to the Output tab.
+
 ## Shortcuts
 
 Use Cmd instead of Ctrl on macOS.
@@ -74,6 +86,7 @@ Use Cmd instead of Ctrl on macOS.
 | `Ctrl+J` | Search the docs |
 | `Ctrl+Shift+J` | Open or close the docs page |
 | `Ctrl+B` | Show or hide the side bar |
+| `Ctrl+,` | Settings |
 | `Ctrl+Shift+G` | Source Control |
 | `Ctrl+N` | Find or create a program |
 | `Ctrl+Shift+O` | Open a folder |
