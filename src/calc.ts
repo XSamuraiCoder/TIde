@@ -68,6 +68,8 @@ interface WebCEmu {
   _emu_keypad_event(row: number, col: number, press: number): void;
   _emu_reset(): void;
   _sendKey(key: number): number;
+  /** Emscripten's main loop controls. */
+  pauseMainLoop?(): void;
 }
 type Factory = (options: Record<string, unknown>) => Promise<WebCEmu>;
 
@@ -143,6 +145,7 @@ export function createCalc(opts: {
     drop: $("calc-drop"),
     keypad: $("calc-keypad"),
     reset: $<HTMLButtonElement>("calc-reset"),
+    reload: $<HTMLButtonElement>("calc-reload"),
     close: $<HTMLButtonElement>("calc-close"),
     consoleToggle: $<HTMLButtonElement>("calc-console-toggle"),
     console: $("calc-console"),
@@ -213,6 +216,8 @@ export function createCalc(opts: {
   let emu: WebCEmu | null = null;
   let memory: WebAssembly.Memory | null = null;
   let starting: Promise<boolean> | null = null;
+  let drawing = false;
+  let feeding = 0;
   const keyQueue: number[] = [];
   // Libraries already on the calculator since it started, by name and size.
   const sentLibs = new Set<string>();
@@ -277,7 +282,7 @@ export function createCalc(opts: {
 
   /** Each animation frame: copy the LCD to the canvas. */
   function draw() {
-    if (!emu || !memory) return;
+    if (!emu || !memory) { drawing = false; return; }
     if (!ui.panel.hidden) {
       const src = new Uint8Array(memory.buffer, emu._lcd_get_frame(), 320 * 240 * 4);
       const dst = image.data;
@@ -349,8 +354,8 @@ export function createCalc(opts: {
     // Run on a 16 ms timer rather than animation frames, so emulation keeps its speed when the
     // page draws slowly or the window is behind another one. Drawing still follows the frames.
     emu.ccall("emsc_set_main_loop_timing", "number", ["number", "number"], [0, 16]);
-    window.setInterval(feedKeys, 20);
-    requestAnimationFrame(draw);
+    feeding ||= window.setInterval(feedKeys, 20);
+    if (!drawing) { drawing = true; requestAnimationFrame(draw); }
     return true;
   }
 
@@ -381,6 +386,27 @@ export function createCalc(opts: {
     }
   });
   ui.reset.addEventListener("click", () => { emu?._emu_reset(); sentLibs.clear(); say("Reset the calculator."); });
+  // Reload ROM: stop this emulator and boot a new one from the stored ROM, as if the calculator was
+  // just turned on with a fresh memory. Picks up a ROM changed with Choose ROM… too.
+  ui.reload.addEventListener("click", async () => {
+    ui.reload.disabled = true;
+    try {
+      if (starting) await starting;
+      try { emu?.pauseMainLoop?.(); } catch { /* already stopped */ }
+      emu = null;
+      memory = null;
+      keyQueue.length = 0;
+      sentLibs.clear();
+      transfer?.reject(new Error("The calculator was reloaded."));
+      transfer = null;
+      log("Reloading the ROM…", "info");
+      if (await ready()) say("Reloaded the ROM.");
+    } catch (err) {
+      say(`Could not reload the ROM: ${err}`);
+    } finally {
+      ui.reload.disabled = false;
+    }
+  });
 
   const view: Calc = {
     get visible() { return !ui.panel.hidden; },
