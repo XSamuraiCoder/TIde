@@ -281,9 +281,38 @@ export function createCalc(opts: {
   }
 
   /** Each animation frame: copy the LCD to the canvas. */
+  // Whether the screen is off. CEmu has no flag for it, but an off or sleeping panel shows one flat
+  // grey (the panel's blank level) on every pixel. Full black or white screens are left alone, since
+  // programs draw those, and the screen must stay blank for half a second, so a quick clear isn't "off".
+  let blankSince = 0;
+  function lcdOff(): boolean {
+    const px = new Uint32Array(memory!.buffer, emu!._lcd_get_frame(), 320 * 240);
+    const first = px[0];
+    const rgb = first & 0xffffff;
+    let blank = rgb !== 0 && rgb !== 0xffffff && (rgb & 0xff) === (rgb >> 8 & 0xff) && (rgb & 0xff) === (rgb >> 16);
+    for (let i = 1; blank && i < px.length; i++) if (px[i] !== first) blank = false;
+    if (!blank) { blankSince = 0; return false; }
+    blankSince ||= performance.now();
+    return performance.now() - blankSince > 500;
+  }
+
   function draw() {
     if (!emu || !memory) { drawing = false; return; }
     if (!ui.panel.hidden) {
+      const off = lcdOff();
+      if (off !== (ui.state.textContent === "LCD off")) ui.state.textContent = off ? "LCD off" : "running";
+      if (off) {
+        // As CEmu shows it: a dark screen that says the LCD is off.
+        ctx.fillStyle = "#101418";
+        ctx.fillRect(0, 0, ui.lcd.width, ui.lcd.height);
+        ctx.fillStyle = "#8b9cbb";
+        ctx.font = `600 ${Math.round(ui.lcd.height / 12)}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("LCD OFF", ui.lcd.width / 2, ui.lcd.height / 2);
+        requestAnimationFrame(draw);
+        return;
+      }
       const src = new Uint8Array(memory.buffer, emu._lcd_get_frame(), 320 * 240 * 4);
       const dst = image.data;
       for (let i = 0; i < dst.length; i += 4) { // 0x00RRGGBB, little-endian
