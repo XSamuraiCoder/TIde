@@ -99,8 +99,18 @@ const calc = createCalc({
   readFile: path => fs.readBinary(path),
   layout: () => {
     // The calculator takes the editor area, like the docs page; only one of them shows at a time.
+    // and it has its own tab: showing it opens the tab, hiding it while its tab is active closes the tab.
     $("act-calc").setAttribute("aria-pressed", String(calc.visible));
-    if (calc.visible) docsView.close();
+    if (calc.visible) {
+      docsView.close();
+      if (active !== CALC_TAB) {
+        views.set(CALC_TAB, { id: CALC_TAB, label: "Calculator", hint: "The TI-84 Plus CE emulator", el: h("div") });
+        if (!tabOrder.includes(CALC_TAB)) tabOrder.push(CALC_TAB);
+        active = CALC_TAB;
+        showActive();
+        refresh();
+      }
+    } else if (active === CALC_TAB) closeTab(CALC_TAB);
   },
 });
 
@@ -172,6 +182,8 @@ const editor = monaco.editor.create($("editor"), {
 
 const docs = new Map<string, Doc>();
 const views = new Map<string, View>();
+/** The calculator's tab id. Its view is the calculator panel over the editor, not the view host. */
+const CALC_TAB = "view:calculator";
 let tabOrder: string[] = [];
 let active: string | null = null;
 let names: string[] = [];
@@ -227,7 +239,8 @@ function activate(id: string, note?: string) {
   if (!tabOrder.includes(id)) tabOrder.push(id);
   active = id;
   docsView.close();
-  if (calc.visible) calc.hide();
+  if (id === CALC_TAB) void calc.show();
+  else if (calc.visible) calc.hide();
   showActive();
   if (doc) editor.focus();
   setMessage(note ?? `Opened ${(doc ?? view)!.label}`);
@@ -236,7 +249,7 @@ function activate(id: string, note?: string) {
 
 /** Shows the active tab: its model in the editor, or its view over the editor. */
 function showActive() {
-  const view = active ? views.get(active) : undefined;
+  const view = active && active !== CALC_TAB ? views.get(active) : undefined;
   editor.setModel(active ? docs.get(active)?.model ?? null : null);
   els.viewHost.hidden = !view;
   if (view && els.viewHost.firstElementChild !== view.el) els.viewHost.replaceChildren(view.el);
@@ -785,8 +798,9 @@ function closeTab(id: string) {
   views.delete(id);
   if (active === id) {
     active = tabOrder[Math.min(index, tabOrder.length - 1)] ?? null;
-    showActive();
+    if (active) activate(active); else showActive();
   }
+  if (id === CALC_TAB && calc.visible) calc.hide();
   refresh();
 }
 
@@ -1453,7 +1467,7 @@ window.addEventListener("keydown", e => {
 $("act-files").addEventListener("click", () => showPane("files", true));
 $("act-docs").addEventListener("click", () => showPane("docs", true));
 $("act-scm").addEventListener("click", () => showPane("scm", true));
-$("act-calc").addEventListener("click", () => void (calc.visible ? calc.hide() : calc.show()));
+$("act-calc").addEventListener("click", () => void (active === CALC_TAB ? closeTab(CALC_TAB) : (views.has(CALC_TAB) ? activate(CALC_TAB) : calc.show())));
 $("calc-cemu").addEventListener("click", () => void runInCemu());
 $("status-branch").addEventListener("click", () => showPane("scm"));
 window.addEventListener("focus", () => { if (settings().refreshScmOnFocus) void scm.refresh(); }); // files may have changed outside TIde
