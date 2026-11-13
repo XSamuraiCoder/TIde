@@ -22,6 +22,9 @@
         <button id="act-docs" type="button" title="Docs (Ctrl+J)" aria-label="Docs">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21a2 2 0 0 1 2-2h13v2"/><path d="M8 7h7M8 11h5"/></svg>
         </button>
+        <button id="act-ext" type="button" title="Extensions (Ctrl+Shift+X)" aria-label="Extensions">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M17.5 3v7M14 6.5h7"/></svg>
+        </button>
         <button id="act-settings" class="settings" type="button" title="Settings (Ctrl+,)" aria-label="Settings">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
         </button>
@@ -69,6 +72,11 @@
           <input id="doc-find" placeholder="Search docs…" title="Enter inserts the best match. F1 opens its full page." spellcheck="false" />
           <div id="doc-list"></div>
         </div>
+        <div class="pane" id="pane-ext" hidden>
+          <div class="side-title side-title-row"><span>Extensions</span><button id="ext-menu" type="button" class="menu-button" title="New extension, the extensions folder, reload" aria-haspopup="menu">More ▾</button></div>
+          <input id="ext-find" placeholder="Search extensions…" spellcheck="false" />
+          <div id="ext-list"></div>
+        </div>
       </aside>
 
       <section class="workspace">
@@ -79,7 +87,7 @@
           <div class="docs" id="docs" hidden></div>
           <div class="calc" id="calc" hidden>
             <div class="calc-bar">
-              <span class="calc-name">Calculator <span id="calc-state"></span></span>
+              <span class="calc-name"><select id="calc-model" title="Which calculator to run. Each model needs a ROM from your own calculator." aria-label="Calculator model"></select> <span id="calc-state"></span></span>
               <button id="calc-send" type="button" title="Send programs, apps, appvars, groups, images or bundles to the calculator. You can also drop files here.">Send files…</button>
               <button id="calc-cemu" type="button" title="Build and run in the CEmu app instead">Open in CEmu</button>
               <button id="calc-console-toggle" type="button" title="Show or hide the console">Console</button>
@@ -89,7 +97,6 @@
             </div>
             <div class="calc-setup" id="calc-setup" hidden>
               <p id="calc-setup-text"></p>
-              <button id="calc-download" type="button" hidden>Download emulator core</button>
               <button id="calc-rom" type="button" hidden>Choose ROM…</button>
             </div>
             <div class="calc-body" id="calc-screen">
@@ -98,11 +105,11 @@
               </div>
               <div class="calc-keypad" id="calc-keypad"></div>
             </div>
-            <p class="hint calc-credit">Drop TI files here to send them. Emulation by <a href="https://github.com/CE-Programming/CEmu" target="_blank" rel="noreferrer">CEmu</a> (GPLv3).</p>
+            <p class="hint calc-credit">Drop TI files here to send them. Emulation by <a id="calc-credit" href="https://github.com/CE-Programming/CEmu" target="_blank" rel="noreferrer">CEmu</a> (<span id="calc-license">GPLv3</span>).</p>
             <div class="calc-console" id="calc-console">
               <div class="calc-console-bar">
                 <span>Console</span>
-                <span class="hint">CEmu output, such as dbg_printf from C programs</span>
+                <span class="hint">Emulator output, such as dbg_printf from C programs</span>
                 <button id="calc-console-clear" type="button">Clear</button>
               </div>
               <div class="calc-console-log" id="calc-console-log" role="log" aria-live="polite"></div>

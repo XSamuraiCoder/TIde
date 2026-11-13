@@ -1,0 +1,2 @@
+# Built emulator core files: keep them byte for byte.
+emulator/*/dist/* binary

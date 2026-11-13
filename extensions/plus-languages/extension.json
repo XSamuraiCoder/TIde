@@ -1,0 +1,684 @@
+{
+  "name": "Plus Languages",
+  "id": "tide.plus-languages",
+  "version": "1.0.0",
+  "author": "TIde",
+  "description": "Language support for the TI-83 Plus and 84 Plus: z80 assembly (.z80, with ti83plus.inc's bcalls and addresses), and TI-BASIC patterns for the Plus's 16×8 home screen and 95×63 graph screen.",
+  "contributes": {
+    "languages": [
+      {
+        "id": "z80",
+        "name": "z80 assembly (TI-83 Plus / 84 Plus)",
+        "extensions": [
+          ".z80"
+        ],
+        "comments": {
+          "lineComment": ";"
+        },
+        "brackets": [
+          [
+            "(",
+            ")"
+          ]
+        ],
+        "monarch": {
+          "ignoreCase": true,
+          "tokenizer": {
+            "root": [
+              [
+                ";.*$",
+                "comment"
+              ],
+              [
+                "\"([^\"\\\\]|\\\\.)*\"",
+                "string"
+              ],
+              [
+                "'[^']*'",
+                "string"
+              ],
+              [
+                "^\\s*[#.][a-zA-Z]+",
+                "keyword.directive"
+              ],
+              [
+                "\\b(b_?call|bjump)\\b",
+                "keyword.directive"
+              ],
+              [
+                "^[A-Za-z_][\\w.]*:?",
+                "type.identifier"
+              ],
+              [
+                "\\$[0-9a-fA-F]+\\b|\\b[0-9][0-9a-fA-F]*h\\b|%[01]+\\b|\\b[01]+b\\b|\\b\\d+\\b",
+                "number"
+              ],
+              [
+                "\\b(adc|add|and|bit|call|ccf|cp|cpd|cpdr|cpi|cpir|cpl|daa|dec|di|djnz|ei|ex|exx|halt|im|in|inc|ind|indr|ini|inir|jp|jr|ld|ldd|lddr|ldi|ldir|neg|nop|or|otdr|otir|out|outd|outi|pop|push|res|ret|reti|retn|rl|rla|rlc|rlca|rld|rr|rra|rrc|rrca|rrd|rst|sbc|scf|set|sla|sll|sra|srl|sub|xor)\\b",
+                "keyword"
+              ],
+              [
+                "\\b(a|b|c|d|e|h|l|i|r|af|bc|de|hl|ix|iy|sp|ixh|ixl|iyh|iyl|nz|z|nc|po|pe|p|m)\\b",
+                "variable.predefined"
+              ],
+              [
+                "_[A-Za-z]\\w*",
+                "support.function"
+              ],
+              [
+                "[A-Za-z_]\\w*",
+                "identifier"
+              ]
+            ]
+          }
+        }
+      }
+    ],
+    "snippets": [
+      {
+        "language": "z80",
+        "prefix": "program",
+        "description": "A TI-83 Plus / 84 Plus assembly program (spasm): clears the screen and prints a message",
+        "body": [
+          ".nolist",
+          "#include \"ti83plus.inc\"",
+          ".list",
+          "",
+          ".org userMem - 2",
+          ".db t2ByteTok, tAsmCmp",
+          "",
+          "\tbcall(_ClrLCDFull)",
+          "\tbcall(_HomeUp)",
+          "\tld\thl, message",
+          "\tbcall(_PutS)",
+          "\t$0",
+          "\tret",
+          "",
+          "message:",
+          "\t.db\t\"${1:Hello}\", 0"
+        ]
+      },
+      {
+        "language": "z80",
+        "prefix": "keyloop",
+        "description": "Read keys with _GetCSC until Clear is pressed",
+        "body": [
+          "${1:loop}:",
+          "\tbcall(_GetCSC)",
+          "\tcp\tskClear",
+          "\tjr\tz, ${2:done}",
+          "\tor\ta",
+          "\tjr\tz, ${1:loop}",
+          "\t$0",
+          "\tjr\t${1:loop}",
+          "${2:done}:"
+        ]
+      },
+      {
+        "language": "z80",
+        "prefix": "grbuf",
+        "description": "Clear the graph buffer, draw, and show it",
+        "body": [
+          "\tbcall(_GrBufClr)",
+          "\t$0",
+          "\tbcall(_GrBufCpy)"
+        ]
+      },
+      {
+        "language": "z80",
+        "prefix": "djnz",
+        "description": "Repeat b times",
+        "body": [
+          "\tld\tb, ${1:10}",
+          "${2:loop}:",
+          "\t$0",
+          "\tdjnz\t${2:loop}"
+        ]
+      },
+      {
+        "language": "tibasic",
+        "prefix": "plusgraph",
+        "description": "A blank TI-83 Plus / 84 Plus graph screen, one unit per pixel",
+        "body": [
+          "ClrDraw",
+          "AxesOff",
+          "GridOff",
+          "FnOff ",
+          "PlotsOff ",
+          "0→Xmin:94→Xmax",
+          "0→Ymin:62→Ymax",
+          "$0"
+        ]
+      },
+      {
+        "language": "tibasic",
+        "prefix": "plustitle",
+        "description": "A title screen for the Plus's 16×8 home screen",
+        "body": [
+          "ClrHome",
+          "Output(${1:3},${2:4},\"${3:MY GAME}\")",
+          "Output(8,1,\"PRESS ENTER\")",
+          "Pause ",
+          "ClrHome",
+          "$0"
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "language": "z80",
+        "label": "_ClrLCDFull",
+        "kind": "function",
+        "detail": "bcall(_ClrLCDFull)",
+        "documentation": "Clears the whole LCD (not the home screen buffer).",
+        "insertText": "bcall(_ClrLCDFull)"
+      },
+      {
+        "language": "z80",
+        "label": "_ClrScrnFull",
+        "kind": "function",
+        "detail": "bcall(_ClrScrnFull)",
+        "documentation": "Clears the home screen, its text buffer and the split screen.",
+        "insertText": "bcall(_ClrScrnFull)"
+      },
+      {
+        "language": "z80",
+        "label": "_HomeUp",
+        "kind": "function",
+        "detail": "bcall(_HomeUp)",
+        "documentation": "Moves the text cursor to the top left: curRow and curCol to 0.",
+        "insertText": "bcall(_HomeUp)"
+      },
+      {
+        "language": "z80",
+        "label": "_PutS",
+        "kind": "function",
+        "detail": "bcall(_PutS)",
+        "documentation": "Prints the zero-terminated string at hl at curRow, curCol, in the large font.",
+        "insertText": "bcall(_PutS)"
+      },
+      {
+        "language": "z80",
+        "label": "_PutC",
+        "kind": "function",
+        "detail": "bcall(_PutC)",
+        "documentation": "Prints the character in a at curRow, curCol, and moves the cursor.",
+        "insertText": "bcall(_PutC)"
+      },
+      {
+        "language": "z80",
+        "label": "_PutMap",
+        "kind": "function",
+        "detail": "bcall(_PutMap)",
+        "documentation": "Prints the character in a at curRow, curCol without moving the cursor.",
+        "insertText": "bcall(_PutMap)"
+      },
+      {
+        "language": "z80",
+        "label": "_DispHL",
+        "kind": "function",
+        "detail": "bcall(_DispHL)",
+        "documentation": "Prints hl as an unsigned number, right-aligned in 5 characters.",
+        "insertText": "bcall(_DispHL)"
+      },
+      {
+        "language": "z80",
+        "label": "_NewLine",
+        "kind": "function",
+        "detail": "bcall(_NewLine)",
+        "documentation": "Moves the cursor to the start of the next line, scrolling if needed.",
+        "insertText": "bcall(_NewLine)"
+      },
+      {
+        "language": "z80",
+        "label": "_VPutS",
+        "kind": "function",
+        "detail": "bcall(_VPutS)",
+        "documentation": "Prints the zero-terminated string at hl in the small font at penRow, penCol.",
+        "insertText": "bcall(_VPutS)"
+      },
+      {
+        "language": "z80",
+        "label": "_VPutMap",
+        "kind": "function",
+        "detail": "bcall(_VPutMap)",
+        "documentation": "Prints the character in a in the small font at penRow, penCol.",
+        "insertText": "bcall(_VPutMap)"
+      },
+      {
+        "language": "z80",
+        "label": "_GetKey",
+        "kind": "function",
+        "detail": "bcall(_GetKey)",
+        "documentation": "Waits for a key and returns its key code in a. Handles 2nd, alpha, contrast and turning off.",
+        "insertText": "bcall(_GetKey)"
+      },
+      {
+        "language": "z80",
+        "label": "_GetCSC",
+        "kind": "function",
+        "detail": "bcall(_GetCSC)",
+        "documentation": "Scans the keypad: a is the scan code of a newly pressed key, or 0 (sk… names).",
+        "insertText": "bcall(_GetCSC)"
+      },
+      {
+        "language": "z80",
+        "label": "_GrBufCpy",
+        "kind": "function",
+        "detail": "bcall(_GrBufCpy)",
+        "documentation": "Copies the graph buffer (plotSScreen) to the LCD.",
+        "insertText": "bcall(_GrBufCpy)"
+      },
+      {
+        "language": "z80",
+        "label": "_GrBufClr",
+        "kind": "function",
+        "detail": "bcall(_GrBufClr)",
+        "documentation": "Clears the graph buffer (plotSScreen).",
+        "insertText": "bcall(_GrBufClr)"
+      },
+      {
+        "language": "z80",
+        "label": "_ILine",
+        "kind": "function",
+        "detail": "bcall(_ILine)",
+        "documentation": "Draws a line from (b, c) to (d, e) in the graph buffer; h is 1 to draw, 0 to erase, 2 to invert.",
+        "insertText": "bcall(_ILine)"
+      },
+      {
+        "language": "z80",
+        "label": "_IPoint",
+        "kind": "function",
+        "detail": "bcall(_IPoint)",
+        "documentation": "Draws a pixel at (b, c) in the graph buffer; d is 1 to draw, 0 to erase, 2 to invert, 3 to test.",
+        "insertText": "bcall(_IPoint)"
+      },
+      {
+        "language": "z80",
+        "label": "_RunIndicOff",
+        "kind": "function",
+        "detail": "bcall(_RunIndicOff)",
+        "documentation": "Turns off the run indicator in the top right corner.",
+        "insertText": "bcall(_RunIndicOff)"
+      },
+      {
+        "language": "z80",
+        "label": "_RunIndicOn",
+        "kind": "function",
+        "detail": "bcall(_RunIndicOn)",
+        "documentation": "Turns the run indicator back on.",
+        "insertText": "bcall(_RunIndicOn)"
+      },
+      {
+        "language": "z80",
+        "label": "_DelVarArc",
+        "kind": "function",
+        "detail": "bcall(_DelVarArc)",
+        "documentation": "Deletes the variable whose VAT entry is at hl and data at de, archived or not.",
+        "insertText": "bcall(_DelVarArc)"
+      },
+      {
+        "language": "z80",
+        "label": "_ChkFindSym",
+        "kind": "function",
+        "detail": "bcall(_ChkFindSym)",
+        "documentation": "Finds the variable named in OP1: hl is its VAT entry, de its data, b its flash page (0 in RAM). Carry if it isn't there.",
+        "insertText": "bcall(_ChkFindSym)"
+      },
+      {
+        "language": "z80",
+        "label": "_Mov9ToOP1",
+        "kind": "function",
+        "detail": "bcall(_Mov9ToOP1)",
+        "documentation": "Copies 9 bytes from hl to OP1, such as a variable name.",
+        "insertText": "bcall(_Mov9ToOP1)"
+      },
+      {
+        "language": "z80",
+        "label": "_CreateProg",
+        "kind": "function",
+        "detail": "bcall(_CreateProg)",
+        "documentation": "Creates a program named in OP1 with hl bytes; de is its data.",
+        "insertText": "bcall(_CreateProg)"
+      },
+      {
+        "language": "z80",
+        "label": "_EnableApd",
+        "kind": "function",
+        "detail": "bcall(_EnableApd)",
+        "documentation": "Turns automatic power down back on.",
+        "insertText": "bcall(_EnableApd)"
+      },
+      {
+        "language": "z80",
+        "label": "_DisableApd",
+        "kind": "function",
+        "detail": "bcall(_DisableApd)",
+        "documentation": "Turns automatic power down off.",
+        "insertText": "bcall(_DisableApd)"
+      },
+      {
+        "language": "z80",
+        "label": "userMem",
+        "kind": "constant",
+        "detail": "userMem = $9D95",
+        "documentation": "Where the running program is loaded."
+      },
+      {
+        "language": "z80",
+        "label": "plotSScreen",
+        "kind": "constant",
+        "detail": "plotSScreen = $9340",
+        "documentation": "The graph buffer: 768 bytes, 12 per row, 64 rows. _GrBufCpy shows it."
+      },
+      {
+        "language": "z80",
+        "label": "saveSScreen",
+        "kind": "constant",
+        "detail": "saveSScreen = $86EC",
+        "documentation": "768 bytes of free RAM, used by the OS when it turns off."
+      },
+      {
+        "language": "z80",
+        "label": "appBackUpScreen",
+        "kind": "constant",
+        "detail": "appBackUpScreen = $9872",
+        "documentation": "768 bytes of free RAM."
+      },
+      {
+        "language": "z80",
+        "label": "curRow",
+        "kind": "constant",
+        "detail": "curRow = $844B",
+        "documentation": "The text cursor's row, 0 to 7."
+      },
+      {
+        "language": "z80",
+        "label": "curCol",
+        "kind": "constant",
+        "detail": "curCol = $844C",
+        "documentation": "The text cursor's column, 0 to 15."
+      },
+      {
+        "language": "z80",
+        "label": "penCol",
+        "kind": "constant",
+        "detail": "penCol = $86D7",
+        "documentation": "The small font's x position, 0 to 95."
+      },
+      {
+        "language": "z80",
+        "label": "penRow",
+        "kind": "constant",
+        "detail": "penRow = $86D8",
+        "documentation": "The small font's y position, 0 to 63."
+      },
+      {
+        "language": "z80",
+        "label": "OP1",
+        "kind": "constant",
+        "detail": "OP1 = $8478",
+        "documentation": "The first of the OS's 11-byte floating-point and name registers."
+      },
+      {
+        "language": "z80",
+        "label": "skDown",
+        "kind": "constant",
+        "detail": "skDown = $01",
+        "documentation": "Scan code of the down arrow, from _GetCSC."
+      },
+      {
+        "language": "z80",
+        "label": "skLeft",
+        "kind": "constant",
+        "detail": "skLeft = $02",
+        "documentation": "Scan code of the left arrow, from _GetCSC."
+      },
+      {
+        "language": "z80",
+        "label": "skRight",
+        "kind": "constant",
+        "detail": "skRight = $03",
+        "documentation": "Scan code of the right arrow, from _GetCSC."
+      },
+      {
+        "language": "z80",
+        "label": "skUp",
+        "kind": "constant",
+        "detail": "skUp = $04",
+        "documentation": "Scan code of the up arrow, from _GetCSC."
+      },
+      {
+        "language": "z80",
+        "label": "skEnter",
+        "kind": "constant",
+        "detail": "skEnter = $09",
+        "documentation": "Scan code of Enter, from _GetCSC."
+      },
+      {
+        "language": "z80",
+        "label": "skClear",
+        "kind": "constant",
+        "detail": "skClear = $0F",
+        "documentation": "Scan code of Clear, from _GetCSC."
+      },
+      {
+        "language": "z80",
+        "label": "sk2nd",
+        "kind": "constant",
+        "detail": "sk2nd = $36",
+        "documentation": "Scan code of 2nd, from _GetCSC."
+      },
+      {
+        "language": "z80",
+        "label": "bcall",
+        "kind": "keyword",
+        "detail": "bcall(_Routine)",
+        "documentation": "Calls an OS routine (rst 28h, then its address).",
+        "insertText": "bcall(${1:_PutS})"
+      }
+    ],
+    "hovers": [
+      {
+        "language": "z80",
+        "word": "_ClrLCDFull",
+        "contents": "**_ClrLCDFull** (bcall)\n\nClears the whole LCD (not the home screen buffer)."
+      },
+      {
+        "language": "z80",
+        "word": "_ClrScrnFull",
+        "contents": "**_ClrScrnFull** (bcall)\n\nClears the home screen, its text buffer and the split screen."
+      },
+      {
+        "language": "z80",
+        "word": "_HomeUp",
+        "contents": "**_HomeUp** (bcall)\n\nMoves the text cursor to the top left: curRow and curCol to 0."
+      },
+      {
+        "language": "z80",
+        "word": "_PutS",
+        "contents": "**_PutS** (bcall)\n\nPrints the zero-terminated string at hl at curRow, curCol, in the large font."
+      },
+      {
+        "language": "z80",
+        "word": "_PutC",
+        "contents": "**_PutC** (bcall)\n\nPrints the character in a at curRow, curCol, and moves the cursor."
+      },
+      {
+        "language": "z80",
+        "word": "_PutMap",
+        "contents": "**_PutMap** (bcall)\n\nPrints the character in a at curRow, curCol without moving the cursor."
+      },
+      {
+        "language": "z80",
+        "word": "_DispHL",
+        "contents": "**_DispHL** (bcall)\n\nPrints hl as an unsigned number, right-aligned in 5 characters."
+      },
+      {
+        "language": "z80",
+        "word": "_NewLine",
+        "contents": "**_NewLine** (bcall)\n\nMoves the cursor to the start of the next line, scrolling if needed."
+      },
+      {
+        "language": "z80",
+        "word": "_VPutS",
+        "contents": "**_VPutS** (bcall)\n\nPrints the zero-terminated string at hl in the small font at penRow, penCol."
+      },
+      {
+        "language": "z80",
+        "word": "_VPutMap",
+        "contents": "**_VPutMap** (bcall)\n\nPrints the character in a in the small font at penRow, penCol."
+      },
+      {
+        "language": "z80",
+        "word": "_GetKey",
+        "contents": "**_GetKey** (bcall)\n\nWaits for a key and returns its key code in a. Handles 2nd, alpha, contrast and turning off."
+      },
+      {
+        "language": "z80",
+        "word": "_GetCSC",
+        "contents": "**_GetCSC** (bcall)\n\nScans the keypad: a is the scan code of a newly pressed key, or 0 (sk… names)."
+      },
+      {
+        "language": "z80",
+        "word": "_GrBufCpy",
+        "contents": "**_GrBufCpy** (bcall)\n\nCopies the graph buffer (plotSScreen) to the LCD."
+      },
+      {
+        "language": "z80",
+        "word": "_GrBufClr",
+        "contents": "**_GrBufClr** (bcall)\n\nClears the graph buffer (plotSScreen)."
+      },
+      {
+        "language": "z80",
+        "word": "_ILine",
+        "contents": "**_ILine** (bcall)\n\nDraws a line from (b, c) to (d, e) in the graph buffer; h is 1 to draw, 0 to erase, 2 to invert."
+      },
+      {
+        "language": "z80",
+        "word": "_IPoint",
+        "contents": "**_IPoint** (bcall)\n\nDraws a pixel at (b, c) in the graph buffer; d is 1 to draw, 0 to erase, 2 to invert, 3 to test."
+      },
+      {
+        "language": "z80",
+        "word": "_RunIndicOff",
+        "contents": "**_RunIndicOff** (bcall)\n\nTurns off the run indicator in the top right corner."
+      },
+      {
+        "language": "z80",
+        "word": "_RunIndicOn",
+        "contents": "**_RunIndicOn** (bcall)\n\nTurns the run indicator back on."
+      },
+      {
+        "language": "z80",
+        "word": "_DelVarArc",
+        "contents": "**_DelVarArc** (bcall)\n\nDeletes the variable whose VAT entry is at hl and data at de, archived or not."
+      },
+      {
+        "language": "z80",
+        "word": "_ChkFindSym",
+        "contents": "**_ChkFindSym** (bcall)\n\nFinds the variable named in OP1: hl is its VAT entry, de its data, b its flash page (0 in RAM). Carry if it isn't there."
+      },
+      {
+        "language": "z80",
+        "word": "_Mov9ToOP1",
+        "contents": "**_Mov9ToOP1** (bcall)\n\nCopies 9 bytes from hl to OP1, such as a variable name."
+      },
+      {
+        "language": "z80",
+        "word": "_CreateProg",
+        "contents": "**_CreateProg** (bcall)\n\nCreates a program named in OP1 with hl bytes; de is its data."
+      },
+      {
+        "language": "z80",
+        "word": "_EnableApd",
+        "contents": "**_EnableApd** (bcall)\n\nTurns automatic power down back on."
+      },
+      {
+        "language": "z80",
+        "word": "_DisableApd",
+        "contents": "**_DisableApd** (bcall)\n\nTurns automatic power down off."
+      },
+      {
+        "language": "z80",
+        "word": "userMem",
+        "contents": "**userMem** = `$9D95`\n\nWhere the running program is loaded."
+      },
+      {
+        "language": "z80",
+        "word": "plotSScreen",
+        "contents": "**plotSScreen** = `$9340`\n\nThe graph buffer: 768 bytes, 12 per row, 64 rows. _GrBufCpy shows it."
+      },
+      {
+        "language": "z80",
+        "word": "saveSScreen",
+        "contents": "**saveSScreen** = `$86EC`\n\n768 bytes of free RAM, used by the OS when it turns off."
+      },
+      {
+        "language": "z80",
+        "word": "appBackUpScreen",
+        "contents": "**appBackUpScreen** = `$9872`\n\n768 bytes of free RAM."
+      },
+      {
+        "language": "z80",
+        "word": "curRow",
+        "contents": "**curRow** = `$844B`\n\nThe text cursor's row, 0 to 7."
+      },
+      {
+        "language": "z80",
+        "word": "curCol",
+        "contents": "**curCol** = `$844C`\n\nThe text cursor's column, 0 to 15."
+      },
+      {
+        "language": "z80",
+        "word": "penCol",
+        "contents": "**penCol** = `$86D7`\n\nThe small font's x position, 0 to 95."
+      },
+      {
+        "language": "z80",
+        "word": "penRow",
+        "contents": "**penRow** = `$86D8`\n\nThe small font's y position, 0 to 63."
+      },
+      {
+        "language": "z80",
+        "word": "OP1",
+        "contents": "**OP1** = `$8478`\n\nThe first of the OS's 11-byte floating-point and name registers."
+      },
+      {
+        "language": "z80",
+        "word": "skDown",
+        "contents": "**skDown** = `$01`\n\nScan code of the down arrow, from _GetCSC."
+      },
+      {
+        "language": "z80",
+        "word": "skLeft",
+        "contents": "**skLeft** = `$02`\n\nScan code of the left arrow, from _GetCSC."
+      },
+      {
+        "language": "z80",
+        "word": "skRight",
+        "contents": "**skRight** = `$03`\n\nScan code of the right arrow, from _GetCSC."
+      },
+      {
+        "language": "z80",
+        "word": "skUp",
+        "contents": "**skUp** = `$04`\n\nScan code of the up arrow, from _GetCSC."
+      },
+      {
+        "language": "z80",
+        "word": "skEnter",
+        "contents": "**skEnter** = `$09`\n\nScan code of Enter, from _GetCSC."
+      },
+      {
+        "language": "z80",
+        "word": "skClear",
+        "contents": "**skClear** = `$0F`\n\nScan code of Clear, from _GetCSC."
+      },
+      {
+        "language": "z80",
+        "word": "sk2nd",
+        "contents": "**sk2nd** = `$36`\n\nScan code of 2nd, from _GetCSC."
+      }
+    ]
+  }
+}

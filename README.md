@@ -34,11 +34,11 @@ Building needs the [CE C toolchain](https://github.com/CE-Programming/toolchain)
 
 ## Calculator
 
-The **Calculator** (the calculator icon in the activity bar) runs a TI-84 Plus CE inside TIde, in its own Calculator tab. **Reset** restarts it; **Reload ROM** boots a fresh calculator from the ROM, with empty memory. When the calculator turns its screen off, the screen shows LCD OFF. **▶ Run** in the status bar (F5) builds the active TI-BASIC program, or the C project with `make`, sends it to the calculator and launches it. **Send files…**, or dropping files on the calculator, sends any TI file: programs, appvars, lists, matrices, groups, pictures and images, apps (`.8ek`), OS files and bundles (`.b84`, `.b83`). The screen and the keypad are the same size, side by side or stacked in a narrow window. The **Console** below them shows CEmu's output, including `dbg_printf` from C programs, and each step TIde takes when sending and running. For a C project, Run also sends the CE C libraries (`clibs.8xg`, from the [CE toolchain releases](https://github.com/CE-Programming/toolchain/releases)) the first time in each calculator session, if TIde finds them in the project (its root, `bin/` or `lib/`), in `$CEDEV`, or in the default toolchain folder. Click the screen to type with CEmu's default keys (letters type their alpha key, Tab is 2nd, `'` is alpha, Esc is clear, F1–F5 are the graph keys, F12 is on; hover a key to see its bindings), or click the keys.
+The **Calculator** (the calculator icon in the activity bar) runs a calculator inside TIde, in its own Calculator tab: a TI-84 Plus CE, or a TI-73, 81, 82, 83, 83 Plus, 83 Plus SE, 84 Plus, 84 Plus SE, 85 or 86. Pick one in the model menu on the calculator bar, which also adds and removes ROMs. **Reset** restarts it; **Reload ROM** boots a fresh calculator from the ROM, with empty memory. When the calculator turns its screen off, the screen shows LCD OFF. **▶ Run** in the status bar (F5) builds the active TI-BASIC program, or the C project with `make`, sends it to the calculator and launches it. **Send files…**, or dropping files on the calculator, sends any TI file: programs, appvars, lists, matrices, groups, pictures and images, apps (`.8ek`), OS files and bundles (`.b84`, `.b83`). The screen and the keypad are the same size, side by side or stacked in a narrow window. The **Console** below them shows CEmu's output, including `dbg_printf` from C programs, and each step TIde takes when sending and running. For a C project, Run also sends the CE C libraries (`clibs.8xg`, from the [CE toolchain releases](https://github.com/CE-Programming/toolchain/releases)) the first time in each calculator session, if TIde finds them in the project (its root, `bin/` or `lib/`), in `$CEDEV`, or in the default toolchain folder. Click the screen to type with CEmu's default keys (letters type their alpha key, Tab is 2nd, `'` is alpha, Esc is clear, F1–F5 are the graph keys, F12 is on; hover a key to see its bindings), or click the keys.
 
-The first time, the panel downloads the emulator core (about 300 KB) and asks for a ROM dumped from your own calculator. TIde keeps both in its data folder; it never ships or downloads a ROM. CEmu only emulates the CE, so set the target to CE to run TI-BASIC. C and assembly programs need an OS that allows them: TI blocks them on OS 5.5 and later.
+Both emulators are built into TIde, so the panel only asks for a ROM dumped from your own calculator. A 4 MB ROM is a CE's; any other goes in the menu under its file name, then under the model it turns out to be. TIde keeps the ROMs in its data folder; it never ships or downloads a ROM. Run sends TI-BASIC as an `.8xp`, so it runs on the CE (with the target set to CE) or a TI-83 Plus or 84 Plus, where TIde starts it from the PRGM menu. On the other models, send files and run them yourself. The TI-85 and 86 get their own key labels. C and assembly programs need an OS that allows them: TI blocks them on OS 5.5 and later.
 
-The emulator is [CEmu](https://github.com/CE-Programming/CEmu)'s core, compiled to WebAssembly by the release workflow from a pinned CEmu commit and published next to the installers (GPLv3; see `WebCEmu-SOURCE.txt` on the release). TIde downloads it separately rather than including it. **Open in CEmu** in the panel runs the program in the full CEmu app instead, which TIde downloads the same way.
+The CE runs on [CEmu](https://github.com/CE-Programming/CEmu)'s core (GPLv3), and the other models on [Wabbitemu](https://github.com/sputt/wabbitemu)'s (GPLv2 or later, from [wasmWabbitemu](https://github.com/marwatk/wasmwabbitemu) with TIde's bridge). Both are compiled to WebAssembly from pinned commits and built into the app; `emulator/cemu` and `emulator/wabbit` hold the builds, the scripts that make them and a `SOURCE.txt` naming the source. **Open in CEmu** in the panel runs the program in the full CEmu desktop app instead, which TIde downloads on first use.
 
 ## Source Control
 
@@ -73,6 +73,47 @@ TI files (`.8xp`, `.8xv`, `.8xg`, `.8ek`, `.b84` and the rest) open as a summary
 
 A folder can have `.tide/tide.json` (**Settings → Project** creates one) with `calculator`, `build` (a command line instead of `make`), `prerun` (steps after building and before sending), `postrun` (steps after the program starts), `send` (files to send, such as `bin/*.8xp`), `program` (what to start), `libraries`, `runIn` (`calculator` or `cemu`), `scripts` (named command lines in the status bar's Scripts menu) and `editor` (settings for this project). Steps are command lines or calculator macros, such as `["app.open(AsmHook2)", "key.press(enter)"]`: `key.press(key)`, `key.type("TEXT")`, `program.run(NAME)` (or `program.open`), `app.open(NAME)` and `wait(ms)`. Comments are allowed, and the editor completes and checks it. Build, prerun and script output goes to the Output tab.
 
+## Extensions
+
+The **Extensions** view (`Ctrl+Shift+X`) lists every extension with a switch to turn it on or off, and **Uninstall** for removing it (its folder goes to the Recycle Bin). TIde's language support comes as two extensions, installed into the extensions folder the first time TIde runs and updated with TIde:
+
+- **CE Languages**, for the TI-84 Plus CE: TIde's IntelliSense for TI-BASIC, CE C, eZ80 assembly and py2ez80 (completions, hover help, signature help, go to label, folding and assembly highlighting), plus whole-program snippets such as `keyloop`, `menuloop` and `guess` in TI-BASIC, `graphxmain` and `kbloop` in C, `keyloop` and `puts` in assembly, and `gameloop` in py2ez80.
+- **Plus Languages**, for the TI-83 Plus and 84 Plus: z80 assembly in `.z80` files, with highlighting, `bcall` completions and hover help for ti83plus.inc's routines and addresses (`_PutS`, `_GetCSC`, `plotSScreen`, `skClear`…), a `program` snippet for a spasm program, and TI-BASIC snippets for the Plus's screens (`plusgraph`, `plustitle`).
+
+Uninstalling one turns its support off; it stays uninstalled until you install it again from **Available** in the same view. Their sources are the folders in `extensions/`, the same as any extension's. Type a snippet's name and pick it from the suggestions (`Ctrl+Space`).
+
+An extension is a folder in TIde's extensions folder (**More ▾ → Open extensions folder**) with an `extension.json`. **More ▾ → New extension** makes one from a template and opens it; saving its files reloads it. Right-click an extension to edit it or show its folder.
+
+```jsonc
+{
+  "name": "My Snippets",
+  "version": "1.0.0",
+  "main": "main.js",                       // optional: code that runs
+  "contributes": {
+    "snippets":    [{ "language": "tibasic", "prefix": "hello", "body": ["Disp \"${1:HI}\"", "$0"] }],
+    "completions": [{ "language": "c", "label": "my_func", "detail": "void my_func(int)", "documentation": "Markdown." }],
+    "hovers":      [{ "language": "tibasic", "word": "Disp", "contents": "Markdown." }],
+    "languages":   [{ "id": "axe", "name": "Axe", "extensions": [".axe"], "monarch": { "tokenizer": { "root": [] } } }]
+  }
+}
+```
+
+`main.js` exports `activate(tide)` (and optionally `deactivate()`). `tide` has `commands.register(id, label, run)` (commands go in the File menu and the editor's right-click menu), `languages.completions`, `hover`, `signatureHelp` and `markers` for IntelliSense in any language, `languages.builtIn("tibasic" | "c" | "ez80" | "python")` to turn on TIde's own IntelliSense for one (as CE Languages does), `on("open" | "save" | "run" | "project" | "settings", fn)`, `editor` (the open file's text and selection), `calculator.macro(…)`, `files`, `message`, `settings`, `project`, and `monaco` for anything else. Everything it registers is undone when the extension is turned off.
+
+### .TIdeex files
+
+A `.tideex` file holds a whole extension, to share it and install it. Right-click an installed extension and choose **Export as .TIdeex…** to make one. To install one, double-click it, drop it on TIde's window, or choose **More ▾ → Install from .TIdeex…**. TIde shows its name, version, author and description first, and says so if it runs code. An extension with the same `id` is replaced, so a newer `.tideex` updates it.
+
+The format is a zip archive, so any zip tool can make or open one:
+
+- `extension.json` at the root, and the files it uses (such as `main.js`) laid out as in the extension's folder. A zip of the extension's folder also works: one top folder is taken off.
+- Entries are stored or deflated, with `/` in paths, which must be relative and can't contain `..`.
+- The archive comment is `TIdeex 1`, the format's version.
+- Up to 1000 files and 32 MB unpacked.
+- It installs to the extensions folder under the manifest's `id` (lower case letters, digits, `-` and `.`, such as `yourname.snippets`), or a name made from its `name`.
+
+Writing an extension has IntelliSense too: `extension.json` gets completions, hover help and checking, and `main.js` gets typed completions for `tide` (add `/** @param {Tide} tide */` above `activate`, or `// @ts-check` for checking, as the template does).
+
 ## Shortcuts
 
 Use Cmd instead of Ctrl on macOS.
@@ -88,6 +129,7 @@ Use Cmd instead of Ctrl on macOS.
 | `Ctrl+B` | Show or hide the side bar |
 | `Ctrl+,` | Settings |
 | `Ctrl+Shift+G` | Source Control |
+| `Ctrl+Shift+X` | Extensions |
 | `Ctrl+N` | Find or create a program |
 | `Ctrl+Shift+O` | Open a folder |
 | `Ctrl+W` | Close the tab |
@@ -128,4 +170,9 @@ cargo test --lib
 
 ## Credits
 
-- [CEmu](https://github.com/CE-Programming/CEmu) by the CE Programming team: its core runs the calculator panel, downloaded on first use.
+- [CEmu](https://github.com/CE-Programming/CEmu) by the CE Programming team: its core runs the TI-84 Plus CE in the calculator panel.
+- [Wabbitemu](https://github.com/sputt/wabbitemu) by Spencer Putt, Chris Shappell, James Montelongo and others, through [wasmWabbitemu](https://github.com/marwatk/wasmwabbitemu) by Marcus Watkins: its core runs the other models.
+
+## License
+
+TIde is free software under the [GNU General Public License v3.0](LICENSE) or any later version. It includes CEmu (GPLv3) and Wabbitemu (GPLv2 or later); their sources are named in `emulator/*/dist/SOURCE.txt`.

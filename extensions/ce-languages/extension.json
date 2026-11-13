@@ -1,0 +1,292 @@
+{
+  "name": "CE Languages",
+  "id": "tide.ce-languages",
+  "version": "1.0.0",
+  "author": "TIde",
+  "description": "Language support for the TI-84 Plus CE: TI-BASIC, CE C, eZ80 assembly and py2ez80, with completions, hover help, signature help and docs, plus whole-program patterns for each.",
+  "main": "main.js",
+  "contributes": {
+    "snippets": [
+      {
+        "language": "tibasic",
+        "prefix": "keyloop",
+        "description": "Wait for a key, then act on it",
+        "body": [
+          "Repeat K",
+          "getKey→K",
+          "End",
+          "If K=${1:105}",
+          "Then",
+          "$0",
+          "End"
+        ]
+      },
+      {
+        "language": "tibasic",
+        "prefix": "gameloop",
+        "description": "Loop until Clear is pressed, reading keys",
+        "body": [
+          "0→K",
+          "Repeat K=45",
+          "getKey→K",
+          "$0",
+          "End"
+        ]
+      },
+      {
+        "language": "tibasic",
+        "prefix": "menuloop",
+        "description": "A menu that comes back after each choice",
+        "body": [
+          "Lbl M",
+          "Menu(\"${1:MAIN MENU}\",\"${2:START}\",A,\"QUIT\",Q)",
+          "Lbl A",
+          "$0",
+          "Goto M",
+          "Lbl Q",
+          "ClrHome"
+        ]
+      },
+      {
+        "language": "tibasic",
+        "prefix": "title",
+        "description": "A title screen that waits for Enter",
+        "body": [
+          "ClrHome",
+          "Output(${1:3},${2:5},\"${3:MY GAME}\")",
+          "Output(10,1,\"PRESS ENTER\")",
+          "Pause ",
+          "ClrHome",
+          "$0"
+        ]
+      },
+      {
+        "language": "tibasic",
+        "prefix": "guess",
+        "description": "A number guessing game",
+        "body": [
+          "randInt(1,${1:100})→N",
+          "0→T",
+          "Repeat G=N",
+          "Prompt G",
+          "T+1→T",
+          "If G<N",
+          "Disp \"HIGHER\"",
+          "If G>N",
+          "Disp \"LOWER\"",
+          "End",
+          "Disp \"GOT IT IN\",T"
+        ]
+      },
+      {
+        "language": "tibasic",
+        "prefix": "cleargraph",
+        "description": "A blank CE graph screen for drawing, one unit per pixel",
+        "body": [
+          "ClrDraw",
+          "AxesOff",
+          "GridOff",
+          "FnOff ",
+          "PlotsOff ",
+          "0→Xmin:264→Xmax",
+          "0→Ymin:164→Ymax",
+          "$0"
+        ]
+      },
+      {
+        "language": "tibasic",
+        "prefix": "saverestore",
+        "description": "Keep the user's window settings and put them back",
+        "body": [
+          "StoreGDB 1",
+          "$0",
+          "RecallGDB 1",
+          "DelVar GDB1"
+        ]
+      },
+      {
+        "language": "c",
+        "prefix": "graphxmain",
+        "description": "main() with graphx, double buffering and a loop until Clear",
+        "body": [
+          "#include <graphx.h>",
+          "#include <keypadc.h>",
+          "",
+          "int main(void)",
+          "{",
+          "    gfx_Begin();",
+          "    gfx_SetDrawBuffer();",
+          "",
+          "    do",
+          "    {",
+          "        kb_Scan();",
+          "        gfx_FillScreen(${1:255});",
+          "        $0",
+          "        gfx_SwapDraw();",
+          "    } while (!(kb_Data[6] & kb_Clear));",
+          "",
+          "    gfx_End();",
+          "    return 0;",
+          "}"
+        ]
+      },
+      {
+        "language": "c",
+        "prefix": "kbloop",
+        "description": "Scan the keypad until Clear is pressed",
+        "body": [
+          "do",
+          "{",
+          "    kb_Scan();",
+          "    if (kb_Data[7] & kb_${1:Up})",
+          "    {",
+          "        $0",
+          "    }",
+          "} while (!(kb_Data[6] & kb_Clear));"
+        ]
+      },
+      {
+        "language": "c",
+        "prefix": "dbg",
+        "description": "Print to the calculator's console (shown under the calculator)",
+        "body": [
+          "dbg_printf(\"${1:%d}\\n\", ${2:value});"
+        ]
+      },
+      {
+        "language": "c",
+        "prefix": "sprite",
+        "description": "Draw a sprite made by convimg",
+        "body": [
+          "gfx_TransparentSprite(${1:sprite}, ${2:x}, ${3:y});"
+        ]
+      },
+      {
+        "language": "ez80",
+        "prefix": "keyloop",
+        "description": "Read keys with _GetCSC until Clear is pressed",
+        "body": [
+          "${1:loop}:",
+          "\tcall\t_GetCSC",
+          "\tcp\ta, skClear",
+          "\tjr\tz, ${2:done}",
+          "\tor\ta, a",
+          "\tjr\tz, ${1:loop}",
+          "\t$0",
+          "\tjr\t${1:loop}",
+          "${2:done}:"
+        ]
+      },
+      {
+        "language": "ez80",
+        "prefix": "puts",
+        "description": "Clear the screen and print a string",
+        "body": [
+          "\tcall\t_ClrScrnFull",
+          "\tcall\t_HomeUp",
+          "\tld\thl, ${1:text}",
+          "\tcall\t_PutS",
+          "\tcall\t_NewLine",
+          "$0"
+        ]
+      },
+      {
+        "language": "ez80",
+        "prefix": "saveregs",
+        "description": "Keep the registers around a call",
+        "body": [
+          "\tpush\taf",
+          "\tpush\tbc",
+          "\tpush\tde",
+          "\tpush\thl",
+          "\t$0",
+          "\tpop\thl",
+          "\tpop\tde",
+          "\tpop\tbc",
+          "\tpop\taf"
+        ]
+      },
+      {
+        "language": "ez80",
+        "prefix": "table",
+        "description": "A lookup table of 24-bit pointers, and a read from it",
+        "body": [
+          "\tld\thl, ${1:table}",
+          "\tld\tde, 0",
+          "\tld\te, a",
+          "\tadd\thl, de",
+          "\tadd\thl, de",
+          "\tadd\thl, de",
+          "\tld\thl, (hl)",
+          "$0",
+          "${1:table}:",
+          "\tdl\t${2:first}, ${3:second}"
+        ]
+      },
+      {
+        "language": "python",
+        "prefix": "gameloop",
+        "description": "Draw and read keys until Clear is pressed",
+        "body": [
+          "import graphics",
+          "",
+          "graphics.init()",
+          "key = 0",
+          "while key != ${1:15}:",
+          "    key = os_GetCSC()",
+          "    graphics.fill(${2:255})",
+          "    $0",
+          "    graphics.swap()",
+          "graphics.end()"
+        ]
+      },
+      {
+        "language": "python",
+        "prefix": "keycheck",
+        "description": "Act on one key",
+        "body": [
+          "key = os_GetCSC()",
+          "if key == ${1:4}:",
+          "    $0"
+        ]
+      },
+      {
+        "language": "python",
+        "prefix": "counter",
+        "description": "A loop that counts and draws each step",
+        "body": [
+          "for ${1:i} in range(0, ${2:10}):",
+          "    graphics.fill(255)",
+          "    $0",
+          "    graphics.swap()"
+        ]
+      }
+    ],
+    "completions": [
+      {
+        "language": "c",
+        "label": "kb_Data",
+        "kind": "variable",
+        "detail": "volatile uint8_t kb_Data[8]",
+        "documentation": "The keypad, after `kb_Scan()`: one byte per group. Group 1 has `kb_2nd`, `kb_Mode`, `kb_Del` and the function keys; 6 has `kb_Enter`, `kb_Clear` and the operators; 7 has the arrows (`kb_Up`, `kb_Down`, `kb_Left`, `kb_Right`)."
+      }
+    ],
+    "hovers": [
+      {
+        "language": "c",
+        "word": "kb_Clear",
+        "contents": "**kb_Clear**: the Clear key, in `kb_Data[6]`."
+      },
+      {
+        "language": "c",
+        "word": "kb_Enter",
+        "contents": "**kb_Enter**: the Enter key, in `kb_Data[6]`."
+      },
+      {
+        "language": "c",
+        "word": "kb_2nd",
+        "contents": "**kb_2nd**: the 2nd key, in `kb_Data[1]`."
+      }
+    ]
+  }
+}

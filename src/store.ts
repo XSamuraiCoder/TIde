@@ -55,7 +55,8 @@ export interface Git {
 export interface Fs {
   available: boolean;
   pickFolder(): Promise<string | null>;
-  pickSaveFile(defaultName: string): Promise<string | null>;
+  /** A save dialog; the filter defaults to TI-84 programs. */
+  pickSaveFile(defaultName: string, filter?: { name: string; extensions: string[] }): Promise<string | null>;
   pickFile(label: string, extensions: string[]): Promise<string | null>;
   pickFiles(label: string, extensions: string[]): Promise<string[]>;
   readBinary(path: string): Promise<Uint8Array>;
@@ -68,6 +69,12 @@ export interface Fs {
   runMake(dir: string): Promise<{ ok: boolean; output: string }>;
   runCommand(dir: string, command: string, args: string[]): Promise<{ ok: boolean; output: string }>;
   createDir(path: string): Promise<void>;
+  /** The folder extensions are installed in. */
+  extensionsDir(): Promise<string>;
+  /** Opens the extensions folder, or a folder in it, in the system's file manager. */
+  revealExtension(path?: string): Promise<void>;
+  /** .TIdeex files TIde was opened with, since this was last asked. */
+  takeOpenedFiles(): Promise<string[]>;
   deletePath(path: string, permanent: boolean): Promise<void>;
   git: Git;
   emulator: Emulator;
@@ -103,12 +110,9 @@ export const fs: Fs = isTauri
       },
       findClibs: projectRoot => invoke<string | null>("find_clibs", { projectRoot }),
       readBinary: async path => new Uint8Array(await invoke<ArrayBuffer>("read_binary_file", { path })),
-      async pickSaveFile(defaultName) {
+      async pickSaveFile(defaultName, filter = { name: "TI-84 program", extensions: ["8xp"] }) {
         const { save } = await import("@tauri-apps/plugin-dialog");
-        const picked = await save({
-          defaultPath: defaultName,
-          filters: [{ name: "TI-84 program", extensions: ["8xp"] }],
-        });
+        const picked = await save({ defaultPath: defaultName, filters: [filter] });
         return typeof picked === "string" ? picked : null;
       },
       readDir: path => invoke<Entry[]>("list_dir", { path }),
@@ -117,6 +121,9 @@ export const fs: Fs = isTauri
       writeBinary: (path, bytes) => invoke<void>("write_binary_file", { path, bytes: Array.from(bytes) }),
       runMake: dir => invoke<{ ok: boolean; output: string }>("run_make", { dir }),
       createDir: path => invoke<void>("create_dir", { path }),
+      extensionsDir: () => invoke<string>("extensions_dir"),
+      revealExtension: path => invoke<void>("reveal_extension", { path: path ?? null }),
+      takeOpenedFiles: () => invoke<string[]>("take_opened_files"),
       deletePath: (path, permanent) => invoke<void>("delete_path", { path, permanent }),
       runCommand: (dir, command, args) => invoke<{ ok: boolean; output: string }>("run_command", { dir, command, args }),
       git: {
@@ -150,6 +157,9 @@ export const fs: Fs = isTauri
       runMake: unavailable,
       runCommand: unavailable,
       createDir: unavailable,
+      extensionsDir: unavailable,
+      revealExtension: unavailable,
+      takeOpenedFiles: async () => [],
       deletePath: unavailable,
       emulator: { status: unavailable, install: unavailable, stage: unavailable, run: unavailable },
       git: { status: unavailable, stage: unavailable, unstage: unavailable, commit: unavailable, push: unavailable, pull: unavailable, init: unavailable },

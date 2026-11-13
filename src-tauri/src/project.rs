@@ -91,6 +91,9 @@ pub fn create_dir(path: String) -> Result<(), String> {
 /// Binary output for exported calculator files (.8xp and friends).
 #[tauri::command]
 pub fn write_binary_file(path: String, bytes: Vec<u8>) -> Result<(), String> {
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
     fs::write(&path, bytes).map_err(|e| e.to_string())
 }
 

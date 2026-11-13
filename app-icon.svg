@@ -1,5 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="1024" height="1024">
   <defs>
+    <!-- Background: TIde's navy, a little lighter at the top -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#13264B" />
+      <stop offset="100%" stop-color="#071027" />
+    </linearGradient>
+
     <!-- Wave Gradients -->
     <linearGradient id="waveTop" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#38BDF8" />
@@ -16,6 +22,10 @@
       <stop offset="100%" stop-color="#1E40AF" />
     </linearGradient>
   </defs>
+
+  <!-- Background -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bg)" />
+  <rect x="2.5" y="2.5" width="59" height="59" rx="13.5" fill="none" stroke="#213A68" stroke-width="1" />
 
   <!-- Wave 1 (Top) -->
   <path d="M 8 23 C 18 17, 26 29, 36 23 C 44 18, 50 25, 56 21" fill="none" stroke="url(#waveTop)" stroke-width="5.5" stroke-linecap="round" />

@@ -347,3 +347,26 @@ body { font: 13px/1.4 var(--ui); background: var(--body); color: var(--ink); ove
 #tree .name-problem { position: absolute; left: 24px; right: 8px; top: 23px; z-index: 3; padding: 4px 6px; font: 12px var(--ui); white-space: normal; color: var(--ink); background: color-mix(in srgb, var(--danger) 30%, var(--panel)); border: 1px solid var(--danger); }
 #tree .name-problem[hidden] { display: none; }
 .context-menu button.shifted span { color: var(--danger); }
+
+/* The calculator model menu on the calculator bar */
+#calc-model { font: 600 13px var(--ui); color: var(--ink); background: var(--body); border: 1px solid var(--rule); border-radius: 3px; padding: 3px 6px; max-width: 260px; }
+#calc-model:hover { border-color: var(--key); }
+
+/* The Extensions view */
+#ext-find { margin: 4px 10px 8px; padding: 5px 8px; font: 13px var(--ui); color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 2px; }
+#ext-list { overflow: auto; flex: 1; min-height: 0; }
+#ext-list > .hint { padding: 4px 14px; }
+#ext-list h3 { font: 11px var(--ui); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 10px 14px 4px; }
+.ext { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 14px; border-left: 2px solid transparent; }
+.ext:hover { background: var(--body); }
+.ext.off .ext-name, .ext.off .ext-desc { opacity: .55; }
+.ext-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ext-name small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+.ext-desc, .ext-adds, .ext-error { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.ext-adds { color: var(--key); }
+.ext-error { color: var(--danger); }
+.ext .switch-toggle { grid-row: 1; grid-column: 2; }
+.ext-actions { grid-column: 1 / -1; display: flex; gap: 6px; margin-top: 4px; }
+.ext-actions button { font: inherit; font-size: 12px; color: var(--ink); background: var(--body); border: 1px solid var(--rule); border-radius: 2px; padding: 2px 10px; cursor: pointer; }
+.ext-actions button:hover { border-color: var(--key); }
+.ext.off .ext-actions { opacity: 1; }

@@ -5,7 +5,8 @@ import * as monaco from "monaco-editor/editor/editor.api.js";
 
 export const ASM_LANG = "ez80";
 /** Extensions opened as eZ80 assembly. ".s" would otherwise be MIPS in Monaco. */
-export const ASM_EXTENSIONS = [".asm", ".s", ".src", ".inc", ".z80", ".ez80"];
+// .z80 is the TI-83 Plus and 84 Plus's z80 assembly, which the Plus Languages extension handles.
+export const ASM_EXTENSIONS = [".asm", ".s", ".src", ".inc", ".ez80"];
 
 export interface AsmEntry { name: string; forms: string[]; doc: string; insert: string }
 export interface CatalogEntry { name: string; insert: string; hint: string; detail?: string }

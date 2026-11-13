@@ -4,12 +4,13 @@ import * as monaco from "monaco-editor/editor/editor.api.js";
 import "monaco-editor"; // full entry: registers suggest, hover, parameter hints, folding and marker navigation
 import editorWorker from "monaco-editor/editor/editor.worker.js?worker";
 import jsonWorker from "monaco-editor/language/json/json.worker.js?worker";
-import { json as monacoJson } from "monaco-editor";
+import tsWorker from "monaco-editor/language/typescript/ts.worker.js?worker";
+import { json as monacoJson, typescript as monacoTs } from "monaco-editor";
 import { languageFor, registerTiBasic, tiCatalog } from "./language";
 import { TARGETS, getTarget, onTargetChange, setTarget } from "./target";
-import { C_CATALOG, registerC } from "./c-support";                        // ← CHANGED: full catalog, not just snippets
-import { PY_CATALOG, registerPy2ez80, watchPython } from "./py2ez80-support"; // ← CHANGED: py2ez80 support
-import { ASM_CATALOG, ASM_LANG, registerAsm } from "./asm-support";
+import { C_CATALOG } from "./c-support";
+import { PY_CATALOG, watchPython } from "./py2ez80-support";
+import { ASM_CATALOG, ASM_LANG } from "./asm-support";
 import { appVersion, checkForUpdate } from "./updater";
 import { createScm } from "./scm";
 import { showMenu, type MenuItem } from "./menu";
@@ -19,18 +20,29 @@ import { hexDump, parseTiFile } from "./tifile";
 import { onSettingsChange, projectSettings, resetSettings, setProjectSettings, setSetting, settings, settingsPage, type Row } from "./settings";
 import { CONFIG_DIR, CONFIG_FILE, CONFIG_SCHEMA, CONFIG_TEMPLATE, parseMacro, readConfig, splitCommand, splitPattern, steps, type ProjectConfig } from "./config";
 import { DOCS, createDocs, type DocLangId } from "./docs";
-import { registerIntellisense, watchModel } from "./intellisense";
+import { watchModel } from "./intellisense";
 import { make8xp, tokenize } from "./build";
 import { exportProgram } from "./export";
+import { EXTENSION_SCHEMA, EXTENSION_TYPES, emit, extensionCommands, extensionsFolder, loadExtensions, reloadExtensions, type BundledExtension, type ExtensionHost, type ExtensionManifest } from "./extensions";
+import { createExtensionsView } from "./extensions-view";
 import { fs, normalizeName, store, type Entry } from "./store";
 
 (self as unknown as { MonacoEnvironment: object }).MonacoEnvironment = {
-  getWorker: (_: unknown, label: string) => (label === "json" ? new jsonWorker() : new editorWorker()),
+  getWorker: (_: unknown, label: string) =>
+    label === "json" ? new jsonWorker() : label === "typescript" || label === "javascript" ? new tsWorker() : new editorWorker(),
 };
 // tide.json gets completions, hover help and checking from its schema. Comments are allowed in it.
 monacoJson.jsonDefaults.setDiagnosticsOptions({
   validate: true, allowComments: true, trailingCommas: "ignore",
-  schemas: [{ uri: "tide://schema/tide.json", fileMatch: [`**/${CONFIG_DIR}/${CONFIG_FILE}`], schema: CONFIG_SCHEMA }],
+  schemas: [
+    { uri: "tide://schema/tide.json", fileMatch: [`**/${CONFIG_DIR}/${CONFIG_FILE}`], schema: CONFIG_SCHEMA },
+    { uri: "tide://schema/extension.json", fileMatch: ["**/extensions/*/extension.json"], schema: EXTENSION_SCHEMA },
+  ],
+});
+// An extension's main.js gets completions and checking for the tide API it's given.
+monacoTs.javascriptDefaults.addExtraLib(EXTENSION_TYPES, "file:///tide/extension-api.d.ts");
+monacoTs.javascriptDefaults.setCompilerOptions({
+  target: monacoTs.ScriptTarget.ESNext, module: monacoTs.ModuleKind.ESNext, allowNonTsExtensions: true, allowJs: true, lib: ["esnext", "dom"],
 });
 
 const screenCols = () => TARGETS[getTarget()].cols;
@@ -133,11 +145,9 @@ const scm = createScm({
   },
 });
 
+// TI-BASIC's highlighting is TIde's own; the IntelliSense for every language comes from the built-in
+// CE Languages extension, which starts below.
 registerTiBasic();
-registerC();
-registerPy2ez80();                                                        // ← CHANGED
-registerAsm();
-registerIntellisense();
 
 // The calculator shows a ":" before every line. It is a gutter, not file content, so saved programs stay clean.
 const GUTTER_PREF = "tide-pref-numbers"; // must not start with "tide:" or the browser store lists it as a program
@@ -245,6 +255,7 @@ function activate(id: string, note?: string) {
   if (doc) editor.focus();
   setMessage(note ?? `Opened ${(doc ?? view)!.label}`);
   refresh();
+  if (doc) emit("open", { name: doc.label, path: doc.id.startsWith("file:") ? doc.id.slice(5) : null, language: doc.language });
 }
 
 /** Shows the active tab: its model in the editor, or its view over the editor. */
@@ -622,6 +633,13 @@ async function saveDoc(doc: Doc): Promise<boolean> {
     doc.savedVersion = doc.model.getAlternativeVersionId();
     if (doc.language === "tibasic") buildErrors.set(doc.label, tokenize(doc.model.getValue()).errors.length);
     setMessage(`Saved ${doc.label}`);
+    const savedPath = doc.id.startsWith("file:") ? doc.id.slice(5) : null;
+    emit("save", { name: doc.label, path: savedPath, language: doc.language });
+    // Saving an extension's files reloads the extensions, so changes show at once.
+    const extDir = extensionsFolder();
+    if (savedPath && extDir && savedPath.toLowerCase().startsWith(extDir.toLowerCase())) {
+      void reloadExtensions().then(() => setMessage(`Saved ${doc.label} and reloaded extensions`));
+    }
     if (doc.id.startsWith("file:")) void scm.refresh();
     if (doc.hint && doc.hint === configPath()) await loadConfig();
   } catch (err) {
@@ -693,7 +711,12 @@ interface ForRun { programs: Built[]; launch: string; libs: Built[] }
 /** Builds the active TI-BASIC program, or the C project with make, into .8xp files to run. */
 async function buildForRun(): Promise<ForRun | null> {
   if (!fs.available) { setMessage("Running programs needs the desktop app."); return null; }
-  if (getTarget() === "plus" && isBasic()) { setMessage("The emulator is a TI-84 Plus CE. Switch Target to CE to run this program."); return null; }
+  if (isBasic()) {
+    // TI-BASIC runs as an .8xp: on the CE when the target is CE, or on a TI-83 Plus or 84 Plus.
+    const family = await calc.family();
+    if (family === "ce" && getTarget() === "plus") { setMessage("The calculator is a TI-84 Plus CE. Switch Target to CE, or pick a TI-84 Plus in the calculator's model menu."); return null; }
+    if (family === "other") { setMessage("Run sends .8xp programs, for the TI-83 Plus, 84 Plus and CE. Pick one in the calculator's model menu."); return null; }
+  }
   if (usesMake()) {
     const root = project!.root;
     if (!(await buildProject())) return null;
@@ -729,6 +752,7 @@ async function runInEmulator() {
     const built = await buildForRun();
     if (!built) return;
     await calc.run(built.programs, built.launch, built.libs);
+    emit("run", { programs: built.programs.map(p => p.name), launch: built.launch });
     const post = project ? steps(config.postrun) : [];
     if (post.length && await runSteps("Postrun", post)) setMessage("Postrun finished");
   } catch (err) {
@@ -837,6 +861,7 @@ async function loadProject(root: string, reveal = true) {
   applyEditorMode(); // the docs and Build button follow the project type
   setMessage(`Opened ${hasMakefile ? "C project" : "folder"} ${project.name}`);
   void scm.refresh();
+  emit("project", { root, name: project.name });
 }
 
 async function openFolder() {
@@ -1045,7 +1070,7 @@ function docListKeys(e: KeyboardEvent) {
   else items[Math.min(next, items.length - 1)]?.focus();
 }
 
-const PANES = ["files", "scm", "docs"] as const;
+const PANES = ["files", "scm", "docs", "ext"] as const;
 type Pane = (typeof PANES)[number];
 let pane: Pane = "files";
 const app = document.querySelector<HTMLElement>(".app")!;
@@ -1424,7 +1449,16 @@ function editorMenu(position: monaco.IPosition | null): MenuItem[] {
     "-",
     { label: "Run in calculator", shortcut: "F5", disabled: els.run.hidden, run: () => void runInEmulator() },
     { label: usesMake() ? "Build" : "Build .8xp", shortcut: "Ctrl+E", disabled: els.exportBtn.hidden, run: () => void exportActive() },
+    "-",
+    ...extensionItems(),
   ];
+}
+
+/** Menu items for the commands extensions added. One that fails says so in the status bar. */
+function extensionItems(): MenuItem[] {
+  return extensionCommands().map(c => ({ label: c.label, shortcut: c.shortcut, run: () => {
+    Promise.resolve().then(c.run).catch(err => setMessage(`${c.label} failed: ${err instanceof Error ? err.message : err}`));
+  } }));
 }
 
 // Every right-click gets TIde's menu or none; text boxes keep their own (for spelling and paste).
@@ -1467,6 +1501,7 @@ window.addEventListener("keydown", e => {
 $("act-files").addEventListener("click", () => showPane("files", true));
 $("act-docs").addEventListener("click", () => showPane("docs", true));
 $("act-scm").addEventListener("click", () => showPane("scm", true));
+$("act-ext").addEventListener("click", () => showPane("ext", true));
 $("act-calc").addEventListener("click", () => void (active === CALC_TAB ? closeTab(CALC_TAB) : (views.has(CALC_TAB) ? activate(CALC_TAB) : calc.show())));
 $("calc-cemu").addEventListener("click", () => void runInCemu());
 $("status-branch").addEventListener("click", () => showPane("scm"));
@@ -1495,6 +1530,9 @@ $("file-menu").addEventListener("click", e => {
     "-",
     { label: "Project settings (.tide/tide.json)", disabled: !project, run: () => void openProjectFile() },
     { label: "Settings", shortcut: "Ctrl+,", run: openSettings },
+    { label: "Extensions", shortcut: "Ctrl+Shift+X", run: () => showPane("ext") },
+    "-",
+    ...extensionItems(),
     "-",
     { label: "Close tab", shortcut: "Ctrl+W", disabled: !active, run: () => { if (active) closeTab(active); } },
     { label: "Close all tabs", disabled: !tabOrder.length, run: () => { for (const id of [...tabOrder]) closeTab(id); } },
@@ -1515,6 +1553,7 @@ onSettingsChange(s => {
   });
   for (const doc of docs.values()) if (doc.language !== ASM_LANG && doc.language !== "tibasic") doc.model.updateOptions({ tabSize: s.tabSize });
   applyEditorMode();
+  emit("settings", s);
 });
 els.target.addEventListener("click", () => setTarget(getTarget() === "ce" ? "plus" : "ce"));
 onTargetChange(() => {
@@ -1547,6 +1586,7 @@ window.addEventListener("keydown", e => {
   else if (key === "j") { e.preventDefault(); showPane("docs"); els.docFind.select(); }
   else if (key === "b") { e.preventDefault(); showPane(pane, true); }
   else if (e.shiftKey && key === "g") { e.preventDefault(); showPane("scm"); }
+  else if (e.shiftKey && key === "x") { e.preventDefault(); showPane("ext"); }
   else if (key === ",") { e.preventDefault(); openSettings(); }
 });
 
@@ -1563,6 +1603,67 @@ if (fs.available) {
   version.addEventListener("click", () => void checkForUpdate(setMessage));
   if (!import.meta.env.DEV && settings().checkUpdates) void checkForUpdate(setMessage, true);
 }
+
+// Extensions: TIde's own, then the installed ones. The view lists them in the side bar.
+const openPath = (path: string) => openFile({ name: baseName(path), path, isDir: false });
+const extensionsView = createExtensionsView({
+  available: fs.available, say: setMessage, openFile: openPath, reveal: path => fs.revealExtension(path),
+  pickPackage: () => fs.pickFile("TIde extension", ["tideex"]),
+  pickSaveFile: name => fs.pickSaveFile(name, { name: "TIde extension", extensions: ["tideex"] }),
+  readBinary: path => fs.readBinary(path),
+  writeBinary: (path, bytes) => fs.writeBinary(path, bytes),
+  show: () => showPane("ext"),
+});
+// Started at once, so the built-in language support is there before any file opens.
+const extensionHost: ExtensionHost = {
+  version: "dev",
+  extensionsDir: () => (fs.available ? fs.extensionsDir() : Promise.resolve(null)),
+  readDir: path => fs.readDir(path),
+  readFile: path => fs.readFile(path),
+  writeFile: (path, text) => fs.writeFile(path, text),
+  readBinary: path => fs.readBinary(path),
+  writeBinary: (path, bytes) => fs.writeBinary(path, bytes),
+  remove: path => fs.deletePath(path, false),
+  message: setMessage,
+  settings,
+  project: () => project && { root: project.root, name: project.name },
+  openFile: openPath,
+  editor: {
+    file: () => { const d = activeDoc(); return d ? { name: d.label, path: d.id.startsWith("file:") ? d.id.slice(5) : null, language: d.language } : null; },
+    text: () => activeDoc()?.model.getValue() ?? "",
+    setText: text => { const d = activeDoc(); if (d) d.model.pushEditOperations([], [{ range: d.model.getFullModelRange(), text }], () => null); },
+    selection: () => { const d = activeDoc(), sel = editor.getSelection(); return d && sel ? d.model.getValueInRange(sel) : ""; },
+    insert: text => { const sel = editor.getSelection(); if (activeDoc() && sel) editor.executeEdits("extension", [{ range: sel, text, forceMoveMarkers: true }]); },
+  },
+  calculator: { show: () => calc.show(), macro: (name, arg) => calc.macro(name, arg ?? "") },
+};
+// The extensions that come with TIde: the folders in extensions/, built into the app as text.
+const BUNDLED: BundledExtension[] = (() => {
+  const files = import.meta.glob("/extensions/*/*", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+  const byId = new Map<string, Record<string, string>>();
+  for (const [path, text] of Object.entries(files)) {
+    const [, , id, name] = path.split("/");
+    if (!byId.has(id)) byId.set(id, {});
+    byId.get(id)![name] = text;
+  }
+  return [...byId].flatMap(([folder, own]) => {
+    const manifest = JSON.parse(own["extension.json"] ?? "null") as ExtensionManifest | null;
+    return manifest ? [{ id: manifest.id ?? folder, manifest, files: own }] : [];
+  });
+})();
+const extensionsReady = loadExtensions(extensionHost, BUNDLED);
+// .TIdeex files install when TIde is opened with one (double-click, or Open with), or one is dropped on
+// the window. They wait for the installed extensions to load, so a newer version is seen as one.
+if (fs.available) {
+  const installOpened = () => fs.takeOpenedFiles().then(paths => { for (const p of paths) void extensionsView.install(p); });
+  void extensionsReady.then(installOpened);
+  import("@tauri-apps/api/event").then(({ listen }) => listen("tide://opened-files", () => void extensionsReady.then(installOpened))).catch(() => {});
+  import("@tauri-apps/api/webview").then(({ getCurrentWebview }) => getCurrentWebview().onDragDropEvent(e => {
+    if (e.payload.type !== "drop") return;
+    for (const p of e.payload.paths.filter(p => /\.tideex$/i.test(p))) void extensionsView.install(p);
+  })).catch(() => { /* not in the desktop app */ });
+}
+if (fs.available) appVersion().then(v => { extensionHost.version = v; }).catch(() => { /* stays "dev" */ });
 
 // Reopen the last project folder, quietly: if it moved or was deleted, just start empty.
 if (fs.available) {
