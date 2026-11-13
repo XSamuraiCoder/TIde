@@ -80,16 +80,31 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+
+      # npm's download cache, shared by every version: package-lock.json changes with each version
+      # bump, so a build restores the newest cache from any earlier version and only fetches what's new.
+      - name: Find npm's cache folder
+        id: npm-cache
+        shell: bash
+        run: echo "dir=$(npm config get cache)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.npm-cache.outputs.dir }}
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
 
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
+      # Compiled Rust dependencies, shared by every version: one cache per platform and target,
+      # restored by its name alone when the dependencies change, and saved even when a build fails.
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: ./src-tauri -> target
-          key: ${{ matrix.target }}
+          shared-key: tide-${{ matrix.target || runner.os }}
+          cache-on-failure: true
 
       - run: npm ci
 
