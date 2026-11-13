@@ -1,0 +1,5 @@
+WebCEmu.js and WebCEmu.wasm are CEmu's core (GPLv3), built unmodified from
+https://github.com/CE-Programming/CEmu/tree/430510c539cce0886b60fd51c8ff1b8d0709c2f9
+with its core/emscripten.mk, by ../build.sh using the emscripten/emsdk:3.1.74 image.
+
+TIde builds them into the app.
