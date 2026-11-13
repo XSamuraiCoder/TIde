@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: build-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false # every commit finishes and publishes, in order
 
 jobs:
   prepare:
@@ -38,7 +38,7 @@ jobs:
             gh release create latest --repo "$REPO" \
               --title "Latest Build" \
               --notes "Latest automated build from commit $SHA" \
-              --target "$SHA" --latest
+              --target "$SHA" --prerelease
           fi
 
   build:
@@ -199,7 +199,7 @@ jobs:
 
           # The release text is RELEASE_NOTES.md, which the app also shows when it offers the update.
           printf '%s\n\n---\nTIde %s, built from commit %s.\n' "$(cat RELEASE_NOTES.md)" "$VERSION" "$SHA" > body.md
-          gh release edit latest --repo "$REPO" --title "TIde v$VERSION" --notes-file body.md --latest
+          gh release edit latest --repo "$REPO" --title "TIde v$VERSION" --notes-file body.md --prerelease
 
           # latest.json tells installed apps about this version: one signed download per platform.
           mkdir -p sigs
