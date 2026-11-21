@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>TIde</title>
+    <link rel="icon" type="image/svg+xml" href="/TIde/assets/app-icon-DxhjDsFe.svg" />
+    <link rel="icon" type="image/png" href="/TIde/assets/app-icon-CxI2v12g.png" />
+    <link rel="apple-touch-icon" href="/TIde/assets/app-icon-CxI2v12g.png" />
+    <script>
+      // Light or dark before anything is drawn, so the page doesn't flash the other one (theme.ts keeps it up to date).
+      try {
+        const theme = JSON.parse(localStorage.getItem("tide-pref-settings") || "{}").theme || "dark";
+        const light = theme === "light" || (theme === "system" && matchMedia("(prefers-color-scheme: light)").matches);
+        document.documentElement.dataset.theme = light ? "light" : "dark";
+      } catch { /* storage unavailable: dark */ }
+    </script>
+    <script type="module" crossorigin src="/TIde/assets/index-Cwccxzcf.js"></script>
+    <link rel="stylesheet" crossorigin href="/TIde/assets/index-BooOu8H9.css">
+  </head>
+  <body>
+    <div class="app">
+      <nav class="activity" aria-label="Views">
+        <img class="logo" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjEwMjQiIGhlaWdodD0iMTAyNCI+CiAgPGRlZnM+CiAgICA8IS0tIEJhY2tncm91bmQ6IFRJZGUncyBuYXZ5LCBhIGxpdHRsZSBsaWdodGVyIGF0IHRoZSB0b3AgLS0+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMxMzI2NEIiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzA3MTAyNyIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CgogICAgPCEtLSBXYXZlIEdyYWRpZW50cyAtLT4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0id2F2ZVRvcCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMzhCREY4IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwRUE1RTkiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgoKICAgIDxsaW5lYXJHcmFkaWVudCBpZD0id2F2ZU1pZCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMDI4NEM3IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyNTYzRUIiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgoKICAgIDxsaW5lYXJHcmFkaWVudCBpZD0id2F2ZUJvdCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMUQ0RUQ4IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxRTQwQUYiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KCiAgPCEtLSBCYWNrZ3JvdW5kIC0tPgogIDxyZWN0IHg9IjIiIHk9IjIiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcng9IjE0IiBmaWxsPSJ1cmwoI2JnKSIgLz4KICA8cmVjdCB4PSIyLjUiIHk9IjIuNSIgd2lkdGg9IjU5IiBoZWlnaHQ9IjU5IiByeD0iMTMuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMjEzQTY4IiBzdHJva2Utd2lkdGg9IjEiIC8+CgogIDwhLS0gV2F2ZSAxIChUb3ApIC0tPgogIDxwYXRoIGQ9Ik0gOCAyMyBDIDE4IDE3LCAyNiAyOSwgMzYgMjMgQyA0NCAxOCwgNTAgMjUsIDU2IDIxIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjd2F2ZVRvcCkiIHN0cm9rZS13aWR0aD0iNS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIC8+CgogIDwhLS0gV2F2ZSAyIChNaWRkbGUpIC0tPgogIDxwYXRoIGQ9Ik0gOCAzMyBDIDE4IDI3LCAyNiAzOSwgMzYgMzMgQyA0NCAyOCwgNTAgMzUsIDU2IDMxIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjd2F2ZU1pZCkiIHN0cm9rZS13aWR0aD0iNS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIC8+CgogIDwhLS0gV2F2ZSAzIChCb3R0b20pIC0tPgogIDxwYXRoIGQ9Ik0gOCA0MyBDIDE4IDM3LCAyNiA0OSwgMzYgNDMgQyA0NCAzOCwgNTAgNDUsIDU2IDQxIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjd2F2ZUJvdCkiIHN0cm9rZS13aWR0aD0iNS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIC8+Cjwvc3ZnPgo=" alt="TIde" />
+        <button id="act-files" type="button" title="Explorer (Ctrl+B hides the side bar)" aria-label="Explorer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></svg>
+        </button>
+        <button id="act-scm" type="button" title="Source Control (Ctrl+Shift+G)" aria-label="Source Control">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10"/><path d="M18 9c0 5-12 3-12 8"/></svg>
+          <span class="badge" id="scm-badge" hidden></span>
+        </button>
+        <button id="act-calc" type="button" title="Calculator (F5 runs the program in it)" aria-label="Calculator">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><rect x="8" y="5" width="8" height="5"/><path d="M8.5 14h.01M12 14h.01M15.5 14h.01M8.5 17.5h.01M12 17.5h.01M15.5 17.5h.01"/></svg>
+        </button>
+        <button id="act-docs" type="button" title="Docs (Ctrl+J)" aria-label="Docs">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21a2 2 0 0 1 2-2h13v2"/><path d="M8 7h7M8 11h5"/></svg>
+        </button>
+        <button id="act-ext" type="button" title="Extensions (Ctrl+Shift+X)" aria-label="Extensions">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M17.5 3v7M14 6.5h7"/></svg>
+        </button>
+        <button id="act-settings" class="settings" type="button" title="Settings (Ctrl+,)" aria-label="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+      </nav>
+
+      <aside class="side">
+        <div class="pane" id="pane-files">
+          <div class="side-title side-title-row"><span>Explorer</span><button id="file-menu" type="button" class="menu-button" title="File menu" aria-haspopup="menu">File ▾</button></div>
+          <input id="find" placeholder="Find or create a program…" title="Enter opens the first match, or creates it if there is none. Ctrl+Enter always creates." spellcheck="false" />
+          <div class="files">
+            <h3 class="section">Programs</h3>
+            <ul id="list"></ul>
+            <p class="hint" id="list-empty" hidden>
+              Nothing yet. Type a name and press Enter to create one.
+            </p>
+            <div class="project-head section">
+              <span id="project-name">No folder open</span>
+              <button id="new-file" class="icon-button" type="button" title="New file" aria-label="New file" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M12 11v6M9 14h6"/></svg></button>
+              <button id="new-folder" class="icon-button" type="button" title="New folder" aria-label="New folder" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M12 10v6M9 13h6"/></svg></button>
+              <button id="open-folder" class="icon-button" type="button" title="Open folder (Ctrl+Shift+O)" aria-label="Open folder"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v2H6.5a1 1 0 0 0-.95.68L3 19z"/><path d="M3 19l2.6-7.3a1 1 0 0 1 .95-.7H21l-2.6 7.3a1 1 0 0 1-.95.7z"/></svg></button>
+            </div>
+            <ul id="tree"></ul>
+            <p class="hint" id="tree-empty" hidden>Open a folder to see its files here.</p>
+          </div>
+        </div>
+
+        <div class="pane" id="pane-scm" hidden>
+          <div class="side-title">Source Control</div>
+          <p class="hint scm-note" id="scm-note"></p>
+          <button id="scm-init" class="scm-init" type="button" hidden>Initialize repository</button>
+          <div class="scm-repo" id="scm-repo" hidden>
+            <textarea id="scm-message" rows="3" placeholder="Message (Ctrl+Enter to commit)" spellcheck="true"></textarea>
+            <div class="scm-actions">
+              <button id="scm-commit" type="button" class="primary" title="Commits the staged changes, or every change if none are staged">Commit</button>
+              <button id="scm-pull" type="button">Pull</button>
+              <button id="scm-push" type="button">Push</button>
+              <button id="scm-refresh" type="button" title="Refresh" aria-label="Refresh">⟳</button>
+            </div>
+            <div class="scm-lists" id="scm-lists"></div>
+          </div>
+        </div>
+
+        <div class="pane" id="pane-docs" hidden>
+          <div class="side-title">Docs <span id="docs-lang"></span></div>
+          <input id="doc-find" placeholder="Search docs…" title="Enter inserts the best match. F1 opens its full page." spellcheck="false" />
+          <div id="doc-list"></div>
+        </div>
+        <div class="pane" id="pane-ext" hidden>
+          <div class="side-title side-title-row"><span>Extensions</span><button id="ext-menu" type="button" class="menu-button" title="New extension, the extensions folder, reload" aria-haspopup="menu">More ▾</button></div>
+          <input id="ext-find" placeholder="Search extensions…" spellcheck="false" />
+          <div id="ext-list"></div>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <div class="tabs" id="tabs"></div>
+        <div class="stage">
+          <div id="editor"></div>
+          <div class="view-host" id="view-host" hidden></div>
+          <div class="docs" id="docs" hidden></div>
+          <div class="calc" id="calc" hidden>
+            <div class="calc-bar">
+              <span class="calc-name"><select id="calc-model" title="Which calculator to run. Each model needs a ROM from your own calculator." aria-label="Calculator model"></select> <span id="calc-state"></span></span>
+              <button id="calc-send" type="button" title="Send programs, apps, appvars, groups, images or bundles to the calculator. You can also drop files here.">Send files…</button>
+              <button id="calc-cemu" type="button" title="Build and run in the CEmu app instead">Open in CEmu</button>
+              <button id="calc-console-toggle" type="button" title="The calculator's console, in the panel under the editor">Console</button>
+              <button id="calc-reset" type="button" title="Reset the calculator">Reset</button>
+              <button id="calc-reload" type="button" title="Turn the calculator off and boot it again from the ROM, with a fresh memory">Reload ROM</button>
+              <button id="calc-close" type="button" title="Back to the editor (Esc on the bar)" aria-label="Close">×</button>
+            </div>
+            <div class="calc-setup" id="calc-setup" hidden>
+              <p id="calc-setup-text"></p>
+              <button id="calc-rom" type="button" hidden>Choose ROM…</button>
+              <button id="calc-connect" type="button" hidden>Connect…</button>
+              <button id="calc-disconnect" type="button" class="quiet" hidden>Disconnect</button>
+            </div>
+            <div class="calc-body" id="calc-screen">
+              <div class="calc-lcd-area" id="calc-lcd-area">
+                <div class="bezel"><canvas id="calc-lcd" width="320" height="240" tabindex="0" title="Click, then type with CEmu's keys: letters, digits and arrows, Enter, Esc (clear), Tab (2nd), ' (alpha), Home (mode), Delete (del), F1–F5 (graph keys), F12 (on). Hover a key to see its keys."></canvas></div>
+              </div>
+              <div class="calc-keypad" id="calc-keypad"></div>
+            </div>
+            <p class="hint calc-credit">Drop TI files here to send them. <span id="calc-credit-what">Emulation</span> by <a id="calc-credit" href="https://github.com/CE-Programming/CEmu" target="_blank" rel="noreferrer">CEmu</a> (<span id="calc-license">GPLv3</span>).</p>
+            <div class="calc-drop" id="calc-drop" hidden>Drop to send to the calculator</div>
+          </div>
+          <div class="empty" id="empty">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjEwMjQiIGhlaWdodD0iMTAyNCI+CiAgPGRlZnM+CiAgICA8IS0tIEJhY2tncm91bmQ6IFRJZGUncyBuYXZ5LCBhIGxpdHRsZSBsaWdodGVyIGF0IHRoZSB0b3AgLS0+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMxMzI2NEIiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzA3MTAyNyIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CgogICAgPCEtLSBXYXZlIEdyYWRpZW50cyAtLT4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0id2F2ZVRvcCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMzhCREY4IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwRUE1RTkiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgoKICAgIDxsaW5lYXJHcmFkaWVudCBpZD0id2F2ZU1pZCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMDI4NEM3IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyNTYzRUIiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgoKICAgIDxsaW5lYXJHcmFkaWVudCBpZD0id2F2ZUJvdCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMUQ0RUQ4IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxRTQwQUYiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KCiAgPCEtLSBCYWNrZ3JvdW5kIC0tPgogIDxyZWN0IHg9IjIiIHk9IjIiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcng9IjE0IiBmaWxsPSJ1cmwoI2JnKSIgLz4KICA8cmVjdCB4PSIyLjUiIHk9IjIuNSIgd2lkdGg9IjU5IiBoZWlnaHQ9IjU5IiByeD0iMTMuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMjEzQTY4IiBzdHJva2Utd2lkdGg9IjEiIC8+CgogIDwhLS0gV2F2ZSAxIChUb3ApIC0tPgogIDxwYXRoIGQ9Ik0gOCAyMyBDIDE4IDE3LCAyNiAyOSwgMzYgMjMgQyA0NCAxOCwgNTAgMjUsIDU2IDIxIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjd2F2ZVRvcCkiIHN0cm9rZS13aWR0aD0iNS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIC8+CgogIDwhLS0gV2F2ZSAyIChNaWRkbGUpIC0tPgogIDxwYXRoIGQ9Ik0gOCAzMyBDIDE4IDI3LCAyNiAzOSwgMzYgMzMgQyA0NCAyOCwgNTAgMzUsIDU2IDMxIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjd2F2ZU1pZCkiIHN0cm9rZS13aWR0aD0iNS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIC8+CgogIDwhLS0gV2F2ZSAzIChCb3R0b20pIC0tPgogIDxwYXRoIGQ9Ik0gOCA0MyBDIDE4IDM3LCAyNiA0OSwgMzYgNDMgQyA0NCAzOCwgNTAgNDUsIDU2IDQxIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjd2F2ZUJvdCkiIHN0cm9rZS13aWR0aD0iNS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIC8+Cjwvc3ZnPgo=" alt="" width="96" height="96" />
+            <strong>TIde</strong>
+            <span class="hint">Open a program from the Explorer, or type a name and press Enter.</span>
+          </div>
+        </div>
+        <div class="panel" id="panel" hidden>
+          <div class="panel-resize" id="panel-resize" title="Drag to resize"></div>
+          <div class="panel-head" role="tablist">
+            <button id="panel-tab-output" type="button" role="tab" title="Build, prerun, postrun and script logs (Ctrl+Shift+U)">Output</button>
+            <button id="panel-tab-terminal" type="button" role="tab" title="Your shell, in the open folder (Ctrl+`)">Terminal</button>
+            <button id="panel-tab-console" type="button" role="tab" title="The calculator's console: dbg_printf from C programs and emulator messages">Console</button>
+            <span class="panel-spacer"></span>
+            <button id="panel-stop" type="button" class="panel-icon" title="Stop what's running" hidden>■ Stop</button>
+            <button id="panel-new-terminal" type="button" class="panel-icon" title="End this shell and start a new one in the open folder" hidden>+ New terminal</button>
+            <button id="panel-clear" type="button" class="panel-icon" title="Clear">Clear</button>
+            <button id="panel-close" type="button" class="panel-icon" title="Close the panel" aria-label="Close the panel">×</button>
+          </div>
+          <div class="panel-body" id="panel-body"></div>
+        </div>
+      </section>
+
+      <footer class="status" data-kind="tibasic">
+        <span id="status-project"></span>
+        <button id="status-branch" type="button" title="Source Control" hidden></button>
+        <button id="problems" type="button" hidden>No problems</button>
+        <button id="status-terminal" type="button" class="status-panel" title="Terminal (Ctrl+`)" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg>Terminal</button>
+        <button id="status-output" type="button" class="status-panel" title="Output: build and script logs (Ctrl+Shift+U)" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h10M4 18h7"/></svg>Output</button>
+        <span id="status-msg"></span>
+        <button id="export" type="button" hidden>Build .8xp</button>
+        <button id="run" type="button" title="Build and run in CEmu, the TI-84 Plus CE emulator (F5)" hidden>▶ Run</button>
+        <button id="target" type="button" title="Which calculator TI-BASIC programs are for. Sets the screen size checks and which commands are available.">Target: CE</button>
+        <button id="gutter" type="button">Gutter: ":"</button>
+        <span id="status-pos"></span>
+        <span id="status-size"></span>
+        <select id="status-encoding" hidden></select>
+        <select id="status-scripts" title="Run a script from tide.json" hidden></select>
+        <button id="version" type="button" title="Check for updates" hidden></button>
+      </footer>
+    </div>
+
+    <!-- Update notice and release notes, filled in by src/updater.ts -->
+    <div class="toast" id="update-toast" role="status" hidden>
+      <p><strong id="update-version"></strong> is available.</p>
+      <div class="actions">
+        <button id="update-skip" type="button">Skip</button>
+        <button id="update-notes-button" type="button">Release notes</button>
+        <button id="update-now" type="button" class="primary">Update</button>
+      </div>
+    </div>
+    <dialog class="update-dialog" id="update-dialog">
+      <h2 id="update-title"></h2>
+      <p class="hint" id="update-current"></p>
+      <div class="md" id="update-notes"></div>
+      <div class="actions">
+        <button id="update-later" type="button">Later</button>
+        <button id="update-install" type="button" class="primary">Update and restart</button>
+      </div>
+    </dialog>
+    <!-- Cross-origin isolation, for the calculator link's threads (see the file). -->
+    <script src="isolate.js"></script>
+  </body>
+</html>

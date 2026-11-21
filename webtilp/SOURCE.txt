@@ -1,0 +1,27 @@
+webtilp.js and webtilp.wasm are the calculator link library of WebTILP: TILP's libraries (libticonv, libtifiles2,
+libticables2, libticalcs2: GPL-2.0-or-later) compiled with Emscripten, with GLib (LGPL-2.1-or-later), libusb
+(LGPL-2.1-or-later) and its WebUSB backend, libarchive (BSD-2-Clause), libffi (MIT) and zlib (zlib).
+
+Built by the "Build WebTILP" workflow of https://github.com/adriweb/tilibs (run 44204684450),
+from commit e271970086288661692f925960367bbe5118a0e8:
+  https://github.com/adriweb/tilibs/tree/e271970086288661692f925960367bbe5118a0e8
+The source of every part is listed below (webtilp-deps.txt from the same build). Update them with
+public/webtilp/update.sh.
+
+emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.9 (4e4223852a0835923411059a3929907d7df1232e)
+glib-2.0 2.88.3
+zlib 1.3.2
+libusb-1.0 1.0.30
+libarchive 3.8.9
+libffi 3.8.0
+# filename sha256 url
+zlib-1.3.2.tar.xz d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3 https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.xz
+libffi-3.8.0.tar.gz 7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4 https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz
+glib-2.88.3.tar.xz ab24d24e698dfa1e408b7bcdb508f4aafc906185a8b8ce72fdf79bbbdc9b383b https://download.gnome.org/sources/glib/2.88/glib-2.88.3.tar.xz
+glib-wasm.patch ab0d26a034257ab4dcde2e9aa41b862eccd0309ba99b887076cf529356f00e11 https://github.com/GNOME/glib/compare/2.88.1...kleisauke:1afd0d285774f342e0aadcda5cc2c2721d47506c.patch
+libusb-1.0.30.tar.bz2 fea36f34f9156400209595e300840767ab1a385ede1dc7ee893015aea9c6dbaf https://github.com/libusb/libusb/releases/download/v1.0.30/libusb-1.0.30.tar.bz2
+libarchive-3.8.9.tar.xz 888c934f9d95648ecb9163dc8e23ab80a476ecb81a8f1154704a227b5b676dde https://github.com/libarchive/libarchive/releases/download/v3.8.9/libarchive-3.8.9.tar.xz
+# Local build inputs (sha256)
+build_wasm_deps.sh de45f44a5ce7ca926aba69d4507a56c95d520c77f21f72c9093ec1f4a2fde22d
+emscripten-cross.ini 43ee9dab0e6948839a10d8a5903ea772bbb4f22c077d679b485e1dbf9bd502a1
+glib-list-callbacks.patch 731dde02867c7fa1ffb2fa39efa64a4f8310802c8fc651ca9563f6410e12ec4d
