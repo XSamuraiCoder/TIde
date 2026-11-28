@@ -1,6 +1,7 @@
-// Which calculator a ROM is from, and its OS version, for the calculator images popup: the same
-// look at the ROM's bytes Wabbitemu makes when it loads one (FindRomVersion, in its
-// utilities/var.c), so the popup can say "TI-84 Plus, OS 2.55MP" before the ROM is ever started.
+// Which calculator a ROM is from, and its OS version, for the calculator images popup, so it can
+// say "TI-84 Plus, OS 2.55MP" before the ROM is ever started. It looks at the ROM's bytes as
+// Wabbitemu does when it loads one (FindRomVersion, in its utilities/var.c); TilEm, which runs the
+// ROM, then names the model itself, and the menu takes its name.
 //   - The model comes from the size, then text only some models have: a 128 KB ROM with CATALOG
 //     in it is a TI-85, not a TI-82; a 256 KB one with "Already Installed" is a TI-86, not a TI-83;
 //     a 512 KB one with "GRAPH  EXPLORER  SOFTWARE" is a TI-73, not a TI-83 Plus.
@@ -48,7 +49,7 @@ function digitsAfterSelfTest(rom: Uint8Array): string {
   return "?";
 }
 
-/** The calculator and OS a ROM dump is from, or null if it isn't a ROM size Wabbitemu knows. */
+/** The calculator and OS a ROM dump is from, or null if it isn't a ROM size these calculators have. */
 export function identifyRom(rom: Uint8Array): RomInfo | null {
   const size = rom.length;
   if (size === 32 * KB) return { model: "TI-81", version: rom[0] === 0xc3 ? "1.1K" : rom[1] === 0x17 ? "2.0V" : rom[5] === 0x09 ? "1.6K" : "1.8K" };

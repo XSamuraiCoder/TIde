@@ -1,6 +1,6 @@
 // Files for the calculator panel: three emulator cores compiled to WebAssembly and built into
 // TIde (see emulator/: each has its build.sh and SOURCE.txt). CEmu's (WebCEmu, GPLv3) runs the
-// TI-84 Plus CE, Wabbitemu's (WabbitEmu, GPLv2+) the TI-73, 81, 82, 83, 83 Plus, 84 Plus, 85 and
+// TI-84 Plus CE, TilEm's (TilEm, GPLv3+) the TI-73, 81, 82, 83, 83 Plus, 84 Plus, 85 and
 // 86, and Firebird's (firebird, GPLv3) the TI-Nspire CX. Then the user's own images: any number of
 // CE ROMs in ce/ (a TI-84 Plus CE's, a TI-83 Premium CE's...), any number of other ROMs in roms/, and the Nspire's boot1.img and flash.img in nspire/, all kept in
 // TIde's data folder. The page reads them all as bytes and runs the cores itself.
@@ -20,12 +20,12 @@ const CORES: [(&str, &[u8]); 6] = [
         include_bytes!("../../emulator/cemu/dist/WebCEmu.wasm"),
     ),
     (
-        "WabbitEmu.js",
-        include_bytes!("../../emulator/wabbit/dist/WabbitEmu.js"),
+        "TilEm.js",
+        include_bytes!("../../emulator/tilem/dist/TilEm.js"),
     ),
     (
-        "WabbitEmu.wasm",
-        include_bytes!("../../emulator/wabbit/dist/WabbitEmu.wasm"),
+        "TilEm.wasm",
+        include_bytes!("../../emulator/tilem/dist/TilEm.wasm"),
     ),
     (
         "firebird.js",
@@ -170,7 +170,7 @@ fn is_nspire_flash(size: u64) -> bool {
 /// Copies the user's ROM into TIde's data folder. A 4 MB ROM is a CE's (TI-84 Plus CE, TI-83
 /// Premium CE or TI-82 AEP) and goes in ce/ under its own name; a 33 or 132 MB image is a Nspire flash and becomes nspire/flash.img; a 512 KB file
 /// named like a boot1 is the Nspire's boot image and becomes nspire/boot1.img; anything else
-/// (16 KB to 4 MB: a TI-73, 81, 82, 83, 83 Plus, 84 Plus, 85 or 86 ROM, or a Wabbitemu .sav) goes
+/// (16 KB to 4 MB: a TI-73, 81, 82, 83, 83 Plus, 84 Plus, 85 or 86 ROM) goes
 /// in roms/ under its own name. A different ROM with the same name gets "name (2)" and on.
 /// Returns "ce:" or "rom:" and the stored name, or "nspire".
 #[tauri::command]

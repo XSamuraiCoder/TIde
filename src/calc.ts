@@ -1,8 +1,8 @@
 // The calculator panel. Three emulator cores, compiled to WebAssembly and built into TIde, run here:
 // - CEmu's (WebCEmu) for the TI-84 Plus CE, which sends over the emulated USB link and launches
 //   programs the way CEmu's --launch does;
-// - Wabbitemu's (WabbitEmu) for the TI-73, 81, 82, 83, 83 Plus, 83 Plus SE, 84 Plus, 84 Plus SE, 85
-//   and 86, which runs a frame at a time on TIde's timer and sends files over its link at once;
+// - TilEm's (TilEm) for the TI-73, 81, 82, 83, 83 Plus, 83 Plus SE, 84 Plus, 84 Plus SE, 85 and 86,
+//   which runs a frame at a time on TIde's timer and sends files over its link at once;
 // - Firebird's (firebird) for the TI-Nspire CX, which boots from a boot1 and flash image, runs a step
 //   at a time on TIde's timer, and sends files over its emulated USB link.
 // The model menu on the calculator bar picks one: the CE, the Nspire, or any ROM you've added for the
@@ -177,7 +177,7 @@ interface WebCEmu {
   /** Emscripten's main loop controls. */
   pauseMainLoop?(): void;
 }
-interface WabbitEmu {
+interface TilEmModule {
   FS: {
     writeFile(path: string, data: Uint8Array): void;
     unlink(path: string): void;
@@ -190,14 +190,14 @@ interface WabbitEmu {
   ): unknown;
   UTF8ToString(ptr: number): string;
   HEAPU8: Uint8Array;
-  _wabbit_fps(): number;
-  _wabbit_frame(): void;
-  _wabbit_lcd(): number;
-  _wabbit_lcd_width(): number;
-  _wabbit_lcd_on(): number;
-  _wabbit_key(group: number, bit: number, down: number): void;
-  _wabbit_reset(): void;
-  _wabbit_programs(): number;
+  _tilem_fps(): number;
+  _tilem_frame(): void;
+  _tilem_lcd(): number;
+  _tilem_lcd_width(): number;
+  _tilem_lcd_on(): number;
+  _tilem_key(group: number, bit: number, down: number): void;
+  _tilem_reset(): void;
+  _tilem_programs(): number;
 }
 interface FirebirdEmu {
   FS: {
@@ -232,22 +232,23 @@ interface FirebirdEmu {
 
 type Factory<T> = (options: Record<string, unknown>) => Promise<T>;
 
-/** Wabbitemu's model numbers, as names. */
-const WABBIT_MODELS = [
-  "TI-81",
-  "TI-82",
-  "TI-83",
-  "TI-85",
-  "TI-86",
-  "TI-73",
-  "TI-83 Plus",
-  "TI-83 Plus SE",
-  "TI-84 Plus",
-  "TI-84 Plus SE",
-];
-const TI_85 = 3,
-  TI_86 = 4,
-  TI_83P = 6;
+/** TilEm's models, by the letter it names each one with. */
+const TILEM_MODELS: Record<string, string> = {
+  "7": "TI-73",
+  "1": "TI-81",
+  "2": "TI-82",
+  "3": "TI-83",
+  f: "TI-76.fr",
+  p: "TI-83 Plus",
+  s: "TI-83 Plus SE",
+  "4": "TI-84 Plus",
+  z: "TI-84 Plus SE",
+  n: "TI-84 Plus (TI-Nspire)",
+  "5": "TI-85",
+  "6": "TI-86",
+};
+/** The TI-83 Plus and 84 Plus family, whose keypad is the CE's and which TIde starts programs on. */
+const TILEM_PLUS = "psz4n";
 
 /**
  * A key: label, position and optional keyboard keys. Positions are the CE's keypad matrix (group
@@ -546,7 +547,7 @@ function layout(keypad: Key[][], arrows: Key[] = ARROWS): Layout {
     ]),
   };
 }
-// ── Each Wabbitemu model's keypad ──
+// ── Each TilEm model's keypad ──
 // They all share the TI-84's grid of keys (and its keyboard bindings): a model's keypad is that
 // grid with the model's own printed labels. Only what TI's guidebooks confirm is printed; what
 // they don't stays blank rather than guessed. (Sources: the TI-83 Guidebook, 1996; the TI-82
@@ -628,9 +629,9 @@ const letterKey = (c: string) =>
         ? 0xcc
         : 0;
 
-/** A running emulator: the CE's (CEmu), another model's (Wabbitemu) or the Nspire's (Firebird). */
+/** A running emulator: the CE's (CEmu), another model's (TilEm) or the Nspire's (Firebird). */
 interface Engine {
-  kind: "cemu" | "wabbit" | "firebird" | "usb" | "serial";
+  kind: "cemu" | "tilem" | "firebird" | "usb" | "serial";
   /** The model's name, such as "TI-84 Plus". */
   model: string;
   /** "ce", "plus" (a TI-83 Plus or 84 Plus, which runs .8xp programs), "nspire" or "other". */
@@ -796,9 +797,12 @@ export function createCalc(opts: {
     fit();
   }
   // The screen and the keypad are two panes of the same size: side by side when there is room,
-  // stacked when the editor area is narrow. Each pane is as large as the space allows.
+  // stacked when the editor area is narrow. Each pane is as large as the space allows. When even
+  // that leaves the keypad too small to use (a small window), it's hidden and the screen takes the
+  // room; the computer's keyboard still drives the calculator.
   const GAP = 24,
-    BEZEL = 28;
+    BEZEL = 28,
+    KEYPAD_MIN = 260;
   function fit() {
     if (ui.panel.hidden) return;
     const dpr = window.devicePixelRatio || 1;
@@ -813,17 +817,19 @@ export function createCalc(opts: {
       parseFloat(style.paddingBottom);
     const stacked = w < 680;
     const paneW = stacked ? w : (w - GAP) / 2;
-    const paneH = Math.max(
-      260,
-      Math.min(
-        stacked ? (h - GAP) / 2 : h,
-        ((paneW - BEZEL) * 3) / 4 + BEZEL,
-        760,
-      ),
+    const withKeypad = Math.min(
+      stacked ? (h - GAP) / 2 : h,
+      ((paneW - BEZEL) * 3) / 4 + BEZEL,
+      760,
     );
+    const keypad = withKeypad >= KEYPAD_MIN;
+    const paneH = keypad
+      ? withKeypad
+      : Math.max(120, Math.min(h, ((w - BEZEL) * 3) / 4 + BEZEL, 760));
     const innerW = Math.floor(((paneH - BEZEL) * 4) / 3),
       innerH = Math.floor(paneH - BEZEL);
     body.classList.toggle("stacked", stacked);
+    body.classList.toggle("no-keypad", !keypad);
     body.style.setProperty("--pane-w", `${innerW + BEZEL}px`);
     body.style.setProperty("--pane-h", `${Math.floor(paneH)}px`);
     // The screen keeps its own shape (4:3 on the CE, 3:2 or 2:1 on the others) inside the pane.
@@ -1169,9 +1175,9 @@ export function createCalc(opts: {
   async function chooseImage(kind: ImageKind, button?: HTMLButtonElement) {
     const path = await opts.pickRom(
       kind === "ce" ? "TI-84 Plus CE or TI-83 Premium CE ROM (4 MB)"
-        : kind === "rom" ? "Calculator ROM (TI-73 to 86) or Wabbitemu save"
+        : kind === "rom" ? "Calculator ROM (TI-73 to 86)"
           : kind === "boot1" ? "TI-Nspire boot1 image (512 KB)" : "TI-Nspire flash image (33 or 132 MB)",
-      kind === "ce" ? ["rom", "bin"] : kind === "rom" ? ["rom", "sav", "bin"] : kind === "boot1" ? ["img", "bin", "rom"] : ["img", "bin"],
+      kind === "ce" ? ["rom", "bin"] : kind === "rom" ? ["rom", "bin"] : kind === "boot1" ? ["img", "bin", "rom"] : ["img", "bin"],
     );
     if (!path) return;
     if (button) { button.disabled = true; button.textContent = kind === "flash" ? "Copying… (it's big)" : "Copying…"; }
@@ -1302,16 +1308,16 @@ export function createCalc(opts: {
           ...(ns.boot1 && ns.flash ? [start("nspire", "Start the TI-Nspire")] : [])),
       ],
       roms: () => [
-        intro("ROMs for the TI-73, 81, 82, 83, 83 Plus, 84 Plus, 85 and 86 run in Wabbitemu. TIde reads each one's model and OS."),
+        intro("ROMs for the TI-73, 81, 82, 83, 83 Plus, 84 Plus, 85 and 86 run in TilEm. TIde reads each one's model and OS."),
         romHelp(),
         ...(have.roms.length
           ? have.roms.map(name => {
               const info = romInfo[name];
               const title = info?.model ?? romModels[name] ?? name;
-              const meta = info ? `OS ${info.version} · ${name}` : /\.sav$/i.test(name) ? `Wabbitemu save · ${name}` : `${name} · identifying…`;
+              const meta = info ? `OS ${info.version} · ${name}` : /\.sav$/i.test(name) ? `Wabbitemu save, which TilEm can't run · ${name}` : `${name} · identifying…`;
               return imageCard(title, meta, true, [action("Remove…", () => void removeRomImage(name), "danger"), start(`rom:${name}`)]);
             })
-          : [el("p", { className: "images-empty" }, "No ROMs yet. Add one dumped from your own calculator (16 KB to 4 MB), or a Wabbitemu save (.sav).")]),
+          : [el("p", { className: "images-empty" }, "No ROMs yet. Add one dumped from your own calculator (16 KB to 4 MB).")]),
         footer((() => { const b = action("Add a ROM…", () => void chooseImage("rom", b), "primary"); return b; })()),
       ],
     };
@@ -1620,89 +1626,91 @@ export function createCalc(opts: {
     };
   }
 
-  // ── Wabbitemu, for the TI-73, 81, 82, 83, 83 Plus, 84 Plus, 85 and 86 ──
+  // ── TilEm, for the TI-73, 81, 82, 83, 83 Plus, 84 Plus, 85 and 86 ──
+  // The bridge's link errors (emulator/tilem/tide_tilem.c).
   const LINK_ERRORS: Record<number, string> = {
     1: "The link failed.",
     2: "The calculator didn't answer in time. Is it on the home screen?",
-    3: "The calculator couldn't load the app.",
     4: "The file was damaged on the way.",
-    5: "The link wasn't ready.",
     6: "There isn't enough memory on the calculator.",
     7: "That file is for a different calculator.",
     8: "That isn't a TI file this calculator can read.",
     9: "The emulator had a problem.",
   };
-  async function startWabbit(name: string): Promise<Engine | null> {
+  async function startTilem(name: string): Promise<Engine | null> {
+    if (/\.sav$/i.test(name))
+      throw new Error(`${name} is a Wabbitemu save, which TilEm can't run. Add the calculator's ROM instead.`);
     const [script, wasm, rom] = await Promise.all([
-      read("WabbitEmu.js"),
-      read("WabbitEmu.wasm"),
+      read("TilEm.js"),
+      read("TilEm.wasm"),
       read(`roms/${name}`),
     ]);
-    const emu = await loadModule<WabbitEmu>(script, {
+    const emu = await loadModule<TilEmModule>(script, {
       wasmBinary: wasm,
       locateFile: (file: string) => file, // the script is a blob URL, which file names can't be resolved against
-      // The core names each file it opens; that is noise here.
-      print: (t: string) => {
-        if (!/^(Filename|pext):/.test(t)) log(t, "emu");
-      },
+      print: (t: string) => log(t, "emu"),
       printErr: (t: string) => log(t, "err"),
     });
-    // The core tells ROMs from saved states by the extension.
-    const path = /\.sav$/i.test(name) ? "/calc.sav" : "/calc.rom";
-    emu.FS.writeFile(path, rom);
-    const id = emu.ccall("wabbit_load", "number", ["string"], [path]) as number;
-    if (id < 0 || id >= WABBIT_MODELS.length) return null;
-    const model = WABBIT_MODELS[id];
+    emu.FS.writeFile("/calc.rom", rom);
+    const id = emu.ccall("tilem_load", "number", ["string"], ["/calc.rom"]) as number;
+    const letter = id > 0 ? String.fromCharCode(id) : "";
+    const model = TILEM_MODELS[letter];
+    if (!model) return null;
     if (romModels[name] !== model) {
       romModels[name] = model;
       remember(NAMES_PREF, romModels);
       fillMenu(known);
     }
     const running = window.setInterval(
-      () => emu._wabbit_frame(),
-      1000 / emu._wabbit_fps(),
+      () => emu._tilem_frame(),
+      1000 / emu._tilem_fps(),
     );
     // The OS is still settling just after it turns on, and doesn't answer the link yet.
     await sleep(1500);
-    // Each model's own keypad (Wabbitemu's model numbers: 0 TI-81, 1 TI-82, 2 TI-83, 3 TI-85, 4 TI-86,
-    // 5 TI-73, 6 and up the TI-83 Plus and 84 Plus family, whose keypad is the CE's).
-    const l = id === TI_85 || id === TI_86 ? LAYOUT_8586 : id === 0 ? LAYOUT_81 : id === 1 ? LAYOUT_82 : id === 2 ? LAYOUT_83 : LAYOUT_CE;
+    // Each model's own keypad: the TI-85 and 86's, the 81's, 82's and 83's (and the 76.fr, an 83),
+    // and the CE's for the TI-73 and the 83 Plus and 84 Plus family.
+    const l =
+      letter === "5" || letter === "6" ? LAYOUT_8586
+        : letter === "1" ? LAYOUT_81
+          : letter === "2" ? LAYOUT_82
+            : letter === "3" || letter === "f" ? LAYOUT_83
+              : LAYOUT_CE;
     const key = (k: Key, down: boolean) =>
-      emu._wabbit_key(7 - k.row, k.col, down ? 1 : 0);
+      emu._tilem_key(7 - k.row, k.col, down ? 1 : 0);
     const keyFor = (label: string) => l.macro.get(label)!;
     /** Letters with alpha, digits as they are, from the keys' alpha letters. */
     const typeChar = async (c: string) => {
       const lower = c === "θ" ? "#" : c.toLowerCase();
       if (/[0-9]/.test(c)) return tap(l.byKbd.get(c)!, 100, 120);
-      const letter = l.byKbd.get(lower);
-      if (!letter) return;
+      const k = l.byKbd.get(lower);
+      if (!k) return;
       await tap(keyFor("alpha"), 100, 120);
-      await tap(letter, 100, 120);
+      await tap(k, 100, 120);
     };
-    const plus = id >= TI_83P;
+    const plus = TILEM_PLUS.includes(letter);
+    const width = emu._tilem_lcd_width();
     return {
-      kind: "wabbit",
+      kind: "tilem",
       model,
       family: plus ? "plus" : "other",
       layout: l,
-      width: emu._wabbit_lcd_width(),
+      width,
       height: 64,
       frame(out) {
-        if (!emu._wabbit_lcd_on()) return false;
-        const width = out.width,
-          ptr = emu._wabbit_lcd(),
+        if (!emu._tilem_lcd_on()) return false;
+        // A row after another, the screen's width each.
+        const ptr = emu._tilem_lcd(),
           src = emu.HEAPU8,
           dst = out.data;
         // The LCD's greens, from clear to dark, as on the real screen.
-        for (let y = 0; y < 64; y++)
-          for (let x = 0; x < width; x++) {
-            const v = src[ptr + y * 128 + x] / 255,
-              i = (y * width + x) * 4;
-            dst[i] = 168 - v * 148;
-            dst[i + 1] = 181 - v * 153;
-            dst[i + 2] = 146 - v * 126;
-            dst[i + 3] = 255;
-          }
+        for (let i = 0; i < width * 64; i++) {
+          const v = src[ptr + i] / 255,
+            o = i * 4;
+          dst[o] = 168 - v * 148;
+          dst[o + 1] = 181 - v * 153;
+          dst[o + 2] = 146 - v * 126;
+          dst[o + 3] = 255;
+        }
         return true;
       },
       key,
@@ -1710,16 +1718,16 @@ export function createCalc(opts: {
         const path = `/send.${file.name.split(".").pop()!.toLowerCase()}`;
         emu.FS.writeFile(path, file.bytes);
         try {
-          // A busy calculator times out (2) or drops the link mid-packet (9); give it a moment and try again.
+          // A calculator busy with something else doesn't answer (2); give it a moment and try again.
           for (let attempt = 0; ; attempt++) {
             const err = emu.ccall(
-              "wabbit_send",
+              "tilem_send",
               "number",
               ["string", "number"],
               [path, /\.8xg$/i.test(file.name) ? 1 : 0],
             ) as number;
             if (!err) break;
-            if ((err !== 2 && err !== 9) || attempt === 3)
+            if (err !== 2 || attempt === 3)
               throw new Error(LINK_ERRORS[err] ?? `Link error ${err}.`);
             await sleep(700);
           }
@@ -1731,7 +1739,7 @@ export function createCalc(opts: {
           }
         }
       },
-      reset: () => emu._wabbit_reset(),
+      reset: () => emu._tilem_reset(),
       stop: () => window.clearInterval(running),
       async launch(name) {
         if (!plus)
@@ -1741,7 +1749,7 @@ export function createCalc(opts: {
         // The PRGM menu lists programs by name and jumps to the first one starting with a letter
         // that's pressed; the arrows go on from there to the right one. Enter pastes it, Enter runs it.
         const names = emu
-          .UTF8ToString(emu._wabbit_programs())
+          .UTF8ToString(emu._tilem_programs())
           .split("\n")
           .filter(Boolean)
           .sort();
@@ -1984,11 +1992,11 @@ export function createCalc(opts: {
         : choice === "nspire"
           ? "firebird"
           : choice.startsWith("rom:")
-            ? "wabbit"
+            ? "tilem"
             : "cemu");
     const credits: Record<string, [string, string, string]> = {
       cemu: ["CEmu", "https://github.com/CE-Programming/CEmu", "GPLv3"],
-      wabbit: ["Wabbitemu", "https://github.com/marwatk/wasmwabbitemu", "GPLv2+"],
+      tilem: ["TilEm", "https://sourceforge.net/projects/tilem/", "GPLv3+"],
       firebird: ["Firebird", "https://github.com/nspire-emus/firebird", "GPLv3"],
       usb: ["TILP's libraries (WebTILP)", "https://github.com/debrouxl/tilibs", "GPLv2+"],
       // The serial link is TIde's own, from the TI Link Protocol Guide.
@@ -2392,7 +2400,7 @@ export function createCalc(opts: {
         choice === "nspire"
           ? await startFirebird()
           : rom
-            ? await startWabbit(rom)
+            ? await startTilem(rom)
             : await startCemu(ce!);
     } catch (err) {
       startError = err instanceof Error ? err.message : String(err);
@@ -2404,7 +2412,7 @@ export function createCalc(opts: {
         choice === "nspire"
           ? "Firebird couldn't start with those images. Choose a TI-Nspire CX boot1 and flash image, or pick a different calculator above."
           : rom
-            ? `Wabbitemu couldn't start with ${rom}. Choose another ROM, or pick a different calculator above.`
+            ? `TilEm couldn't start with ${rom}. Choose another ROM, or pick a different calculator above.`
             : "CEmu couldn't start with that ROM. Choose a TI-84 Plus CE ROM.";
       showImages(startError ? `${fallback} (${startError})` : fallback);
       if (startError) opts.say(startError);

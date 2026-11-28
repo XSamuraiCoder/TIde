@@ -81,7 +81,7 @@ The emulators are built into TIde, so the panel only asks for images dumped from
 
 Each keypad is laid out like its calculator's: every key shows what 2nd and alpha make of it above it, lit up while 2nd or alpha waits for the next key; the TI-81, 82, 83, 85 and 86 have their own labels, and the TI-Nspire CX its own keyboard with the touchpad. C and assembly programs need an OS that allows them: TI blocks them on OS 5.5 and later.
 
-The CE calculators run on [CEmu](https://github.com/CE-Programming/CEmu)'s core (GPLv3), the TI-73 to 86 on [Wabbitemu](https://github.com/sputt/wabbitemu)'s (GPLv2 or later, from [wasmWabbitemu](https://github.com/marwatk/wasmwabbitemu) with TIde's bridge), and the TI-Nspire CX on [Firebird](https://github.com/nspire-emus/firebird)'s (GPLv3, with TIde's bridge). All three are compiled to WebAssembly and built into the app; `emulator/cemu`, `emulator/wabbit` and `emulator/firebird` hold the builds, the scripts that make them and a `SOURCE.txt` naming the source. **Open in CEmu** in the panel runs the program in the full CEmu desktop app instead, which TIde downloads on first use.
+The CE calculators run on [CEmu](https://github.com/CE-Programming/CEmu)'s core (GPLv3), the TI-73 to 86 on [TilEm](https://sourceforge.net/projects/tilem/)'s (LGPLv2.1 or later, with its TI-81 program loader, GPLv3 or later, and TIde's bridge, which speaks the calculators' link protocol to send files), and the TI-Nspire CX on [Firebird](https://github.com/nspire-emus/firebird)'s (GPLv3, with TIde's bridge). All three are compiled to WebAssembly and built into the app; `emulator/cemu`, `emulator/tilem` and `emulator/firebird` hold the builds, the scripts that make them and a `SOURCE.txt` naming the source. **Open in CEmu** in the panel runs the program in the full CEmu desktop app instead, which TIde downloads on first use.
 
 The TI-84 Evo has no emulator in TIde. TIde recognizes an Evo over USB and can describe its USB identity in the Console; for now, use TI Connect Evo to transfer files. TI-Python editing and documentation are built in.
 
@@ -252,7 +252,8 @@ cargo test --lib
 ### Built into TIde
 
 - [CEmu](https://github.com/CE-Programming/CEmu) by the CE Programming team: its core runs the TI-84 Plus CE, TI-83 Premium CE and TI-82 Advanced Edition Python in the calculator panel.
-- [Wabbitemu](https://github.com/sputt/wabbitemu) by Spencer Putt, Chris Shappell, James Montelongo and others, through [wasmWabbitemu](https://github.com/marwatk/wasmwabbitemu) by Marcus Watkins: its core runs the TI-73, 81, 82, 83, 83 Plus, 84 Plus, 85 and 86.
+- [TilEm](https://sourceforge.net/projects/tilem/) by Benjamin Moody and Thibault Duponchelle, after the original by Julien Solignac, with hardware emulation by Luc Bruant: its core runs the TI-73, 81, 82, 83, 83 Plus, 84 Plus, 85 and 86.
+- [Wabbitemu](https://github.com/sputt/wabbitemu) by Spencer Putt, Chris Shappell, James Montelongo and others: how TIde tells a ROM's model and OS from its bytes comes from its code.
 - [Firebird](https://github.com/nspire-emus/firebird) by the nspire-emus team: its core runs the TI-Nspire CX.
 - [TILP's libraries](https://github.com/debrouxl/tilibs) (libticalcs2, libticables2, libtifiles2, libticonv) by Romain Liévin, Lionel Debroux and others, built for the web as WebTILP by [Adrien Bertrand](https://github.com/adriweb/tilibs): they connect real calculators over USB.
 - The [CE C/C++ toolchain](https://github.com/CE-Programming/toolchain) by the CE Programming team, with [convbin](https://github.com/mateoconlechuga/convbin) and [spasm-ng](https://github.com/alberthdev/spasm-ng): TIde's toolchain for building C, C++ and assembly.
@@ -266,4 +267,4 @@ cargo test --lib
 
 ## License
 
-TIde is free software under the [GNU General Public License v3.0](LICENSE) or any later version. It includes CEmu (GPLv3), Wabbitemu (GPLv2 or later) and Firebird (GPLv3), whose sources are named in `emulator/*/dist/SOURCE.txt`, and TILP's libraries (GPLv2 or later) with their dependencies, named in `public/webtilp/SOURCE.txt`.
+TIde is free software under the [GNU General Public License v3.0](LICENSE) or any later version. It includes CEmu (GPLv3), TilEm (LGPLv2.1 or later, and GPLv3 or later) and Firebird (GPLv3), whose sources are named in `emulator/*/dist/SOURCE.txt`, and TILP's libraries (GPLv2 or later) with their dependencies, named in `public/webtilp/SOURCE.txt`.

@@ -1300,8 +1300,13 @@ body {
     gap: 24px;
     padding: 20px 24px 8px;
 }
-.calc-body.stacked {
+.calc-body.stacked,
+.calc-body.no-keypad {
     grid-template-columns: var(--pane-w, 420px);
+}
+/* Too little room for a usable keypad (calc.ts fit()): just the screen. */
+.calc-body.no-keypad .calc-keypad {
+    display: none;
 }
 .calc-lcd-area {
     display: grid;
