@@ -59,11 +59,13 @@ Programs live in the list under **Programs**, separate from any folder you open.
 
 In a project, its `.tide/tide.json` says which calculator it's for (`"calculator"`), and opening the folder asks when it doesn't; **Settings → Project → Set up this folder…** changes it. Outside a project, **Settings → Calculator** sets which calculator your TI-BASIC programs are for, for all of them.
 
-| | TI-84 Plus CE | TI-84 Plus |
-|---|---|---|
-| Home screen | 26 × 10 | 16 × 8 |
-| Graph screen | 265 × 165 | 95 × 63 |
-| Color and other CE-only commands | Available | Marked as errors and left out of the `.8xp` |
+| | TI-84 Plus CE | TI-84 Plus | TI-84 EVO | TI-Nspire CX |
+|---|---|---|---|---|
+| Home screen | 26 × 10 | 16 × 8 | 32 x 10 | Adjustable | 
+| Graph screen | 265 × 165 | 95 × 63 | 319 x 209 | 320 x 240 |
+| Color support | Available | Unavailable | Available | Available |
+| CE-only commands | Available | Marked as errors and excluded from the `.8xp` | Available | Available |
+| Output format | `.8xp` | `.8xp` | `.8xp2`| `.tns` |
 
 ## C projects
 
