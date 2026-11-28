@@ -12,7 +12,7 @@ import type { Settings } from "./settings";
 import { parseJsonc } from "./config";
 import { packTideex, unpackTideex, type PackedFile } from "./tideex";
 import { builtInLanguage } from "./language-support";
-import { registerTheme, type Theme } from "./theme";
+import { registerTheme, SYNTAX_KEYS, THEME_TOKENS, type Theme } from "./theme";
 
 const BUILT_IN_NAMES: Record<string, string> = {
   tibasic: "TI-BASIC",
@@ -993,10 +993,54 @@ export const EXTENSION_SCHEMA = {
             },
           },
         },
+        themes: {
+          type: "array",
+          description: "Themes for Settings → Theme.",
+          items: {
+            type: "object",
+            required: ["id", "name", "base"],
+            additionalProperties: false,
+            properties: {
+              id: {
+                type: "string",
+                pattern: "^[\\w.-]+$",
+                description:
+                  "What the theme setting stores, and tide.json's editor.theme: letters, digits, \".\", \"-\" and \"_\".",
+              },
+              name: { type: "string", description: "What Settings shows." },
+              base: {
+                enum: ["dark", "light"],
+                description:
+                  "What it doesn't set comes from TIde Dark or TIde Light.",
+              },
+              colors: {
+                type: "object",
+                description: "The window's colors, by token, as #rrggbb.",
+                additionalProperties: false,
+                properties: Object.fromEntries(
+                  THEME_TOKENS.map((t) => [t, { $ref: "#/definitions/color" }]),
+                ),
+              },
+              syntax: {
+                type: "object",
+                description: "The editor's colors, by role, as #rrggbb.",
+                additionalProperties: false,
+                properties: Object.fromEntries(
+                  SYNTAX_KEYS.map((k) => [k, { $ref: "#/definitions/color" }]),
+                ),
+              },
+            },
+          },
+        },
       },
     },
   },
   definitions: {
+    color: {
+      type: "string",
+      pattern: "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$",
+      description: "A color: #rrggbb or #rgb.",
+    },
     language: {
       type: "string",
       description: "The language it's for.",
@@ -1007,6 +1051,7 @@ export const EXTENSION_SCHEMA = {
             "c",
             "cpp",
             "ez80",
+            "z80",
             "python",
             "tipython",
             "lua",
@@ -1029,9 +1074,9 @@ interface Disposable { dispose(): void }
 type TideEvent = "open" | "save" | "run" | "project" | "settings";
 /** The API a TIde extension's activate(tide) gets. */
 interface Tide {
-  /** TIde's version, such as "1.4.0". */
+  /** TIde's version, such as "2.2.0", or "dev" in a browser or a development build. */
   readonly version: string;
-  /** This extension: its id, folder and extension.json. */
+  /** This extension: its id, folder ("tide:<id>" when it runs from TIde itself, in a browser) and extension.json. */
   readonly extension: { id: string; dir: string; manifest: any };
   /** Monaco, the editor TIde is built on, for anything else: monaco.languages, monaco.editor… */
   readonly monaco: any;
@@ -1041,7 +1086,8 @@ interface Tide {
     /**
      * Adds a command to the Run menu and the editor's right-click menu. With when, it shows only
      * in the projects it's for: { project: true } while a folder is open, { calculator: ["nspire"] }
-     * in a project for those calculators, { language: ["c", "cpp"] } in one in those languages.
+     * in a project for those calculators, { language: ["c", "cpp"] } in one in those languages
+     * (tide.json's names). shortcut is the hint the menus show; it doesn't bind a key.
      */
     register(
       id: string,
@@ -1053,7 +1099,7 @@ interface Tide {
       },
     ): Disposable;
   };
-  /** IntelliSense for any language: "tibasic", "c", "ez80" (assembly), "python", or one an extension adds. */
+  /** IntelliSense for any editor language: "tibasic", "c", "cpp", "ez80", "z80", "python" (py2ez80), "tipython", "lua", or one an extension adds. */
   readonly languages: {
     /** provider.provideCompletionItems(model, position) returns { suggestions: [...] }, as in Monaco. */
     completions(language: string, provider: { provideCompletionItems(model: any, position: any): any; triggerCharacters?: string[] }): Disposable;
@@ -1065,7 +1111,7 @@ interface Tide {
     /** Shows problems in a file (squiggles and the status bar). */
     markers(model: any, markers: { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number; message: string; severity: number }[]): void;
   };
-  /** Runs fn when a file or program opens or is saved, a program runs, a folder opens, or settings change. */
+  /** Runs fn when a file or program opens or is saved, a program runs, the active folder changes or closes, or settings change. */
   on(event: TideEvent, fn: (detail: any) => void): Disposable;
   /** Runs a command line in the open folder (or 'dir'), like tide.json's build. Output goes to the Output tab. */
   run(line: string, dir?: string): Promise<{ ok: boolean; output: string }>;
@@ -1073,7 +1119,7 @@ interface Tide {
   message(text: string): void;
   /** The settings in use. */
   settings(): Readonly<Record<string, unknown>>;
-  /** The open folder, if any. */
+  /** The open folder (in a workspace, the active one), if any. */
   project(): { root: string; name: string; calculator: string; language?: string } | null;
   readonly editor: {
     /** The open file or program: its name, path (null for programs) and language. */

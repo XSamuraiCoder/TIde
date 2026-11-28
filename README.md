@@ -164,12 +164,13 @@ An extension is a folder in TIde's extensions folder (**More ▾ → Open extens
     "snippets":    [{ "language": "tibasic", "prefix": "hello", "body": ["Disp \"${1:HI}\"", "$0"] }],
     "completions": [{ "language": "c", "label": "my_func", "detail": "void my_func(int)", "documentation": "Markdown." }],
     "hovers":      [{ "language": "tibasic", "word": "Disp", "contents": "Markdown." }],
-    "languages":   [{ "id": "axe", "name": "Axe", "extensions": [".axe"], "monarch": { "tokenizer": { "root": [] } } }]
+    "languages":   [{ "id": "axe", "name": "Axe", "extensions": [".axe"], "monarch": { "tokenizer": { "root": [] } } }],
+    "themes":      [{ "id": "sunset", "name": "Sunset", "base": "dark", "colors": { "paper": "#2a1833" }, "syntax": { "keyword": "#ff9e64" } }]
   }
 }
 ```
 
-`main.js` exports `activate(tide)` (and optionally `deactivate()`). `tide` has `commands.register(id, label, run)` (commands go in the Run menu and the editor's right-click menu), `languages.completions`, `hover`, `signatureHelp` and `markers` for IntelliSense in any language, `languages.builtIn("tibasic" | "c" | "ez80" | "python")` to turn on TIde's own IntelliSense for one (as CE Languages does), `on("open" | "save" | "run" | "project" | "settings", fn)`, `editor` (the open file's text and selection), `calculator.macro(…)`, `files`, `message`, `settings`, `project`, and `monaco` for anything else. Everything it registers is undone when the extension is turned off.
+`main.js` exports `activate(tide)` (and optionally `deactivate()`). `tide` has `commands.register(id, label, run, { shortcut, when })` (commands go in the Run menu and the editor's right-click menu; `when` shows one only in projects for some calculators or languages), `languages.completions`, `hover`, `signatureHelp` and `markers` for IntelliSense in any language, `languages.builtIn("tibasic" | "c" | "ez80" | "python" | "tipython")` to turn on TIde's own IntelliSense for one (as CE Languages does), `on("open" | "save" | "run" | "project" | "settings", fn)`, `editor` (the open file's text and selection), `calculator` (`show`, `family`, `macro`, `send`), `files`, `run` (a command line, with its output in Output), `message`, `settings`, `project` (in a workspace, the active folder), and `monaco` for anything else. Everything it registers is undone when the extension is turned off.
 
 ### .TIdeex files
 

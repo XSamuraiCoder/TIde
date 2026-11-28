@@ -1,8 +1,8 @@
 Extension development guide
 ===========================
 
-This guide covers only TIde extensions: add-ons that contribute language support and editor or
-calculator tools. An extension can use a manifest for static editor features and optional JavaScript
+This guide covers only TIde extensions: add-ons that contribute language support, themes, and
+editor or calculator tools. An extension can use a manifest for static editor features and optional JavaScript
 for behavior that needs code.
 
 Create a project
@@ -65,9 +65,10 @@ The extension folder is the project root. A minimal extension needs a manifest:
    }
 
 The ``id`` is 1–64 characters, starts with a lowercase letter or digit, and uses lowercase letters,
-digits, periods, and hyphens. Keep it stable: TIde uses it to identify the extension and replace it
-when a user installs an update. The manifest is checked as you edit it; hover fields in the editor
-for schema help.
+digits, periods, and hyphens. Without one, TIde makes it from the ``name`` in lower case. Keep it
+stable: TIde uses it as the installed folder's name and to replace the extension when a user
+installs an update. The manifest may have ``//`` comments, as ``tide.json`` can, and is checked as
+you edit it; hover fields in the editor for schema help.
 
 Contribute editor features
 --------------------------
@@ -89,11 +90,38 @@ The ``contributes`` object supports five kinds of static contributions:
 * **Themes** have ``id``, ``name``, and ``base`` fields, plus optional ``colors`` and ``syntax``.
   See :ref:`themes`.
 
-The ``language`` value is a Monaco language ID. TIde includes IDs such as ``tibasic``, ``c``,
-``cpp``, ``ez80``, ``z80``, ``python``, ``tipython``, ``py2ez80``, ``lua``, and ``json``. When you
-contribute a new language, use its ID for that extension's snippets, completions, hovers, and
-JavaScript providers. Choose a unique ID for a new language; when adding features to an existing
-language, contribute under its ID without adding a new ``languages`` entry.
+The ``language`` value is the editor's (Monaco's) language ID for the file. TIde's are:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - ID
+     - Files
+   * - ``tibasic``
+     - TI-BASIC programs.
+   * - ``c``, ``cpp``
+     - C and C++, for the CE and the Nspire (Ndless).
+   * - ``ez80``
+     - Assembly: ``.asm``, ``.s``, ``.src``, ``.inc``, ``.ez80``.
+   * - ``z80``
+     - z80 assembly for the TI-83 Plus and 84 Plus: ``.z80`` files, and the assembly files above in a
+       project whose ``tide.json`` language is ``z80``. The built-in *Plus Languages* extension adds
+       it.
+   * - ``tipython``
+     - ``.py`` files: TI-Python.
+   * - ``python``
+     - ``.py`` files in a project whose ``tide.json`` language is ``py2ez80``. (``py2ez80`` is the
+       ``tide.json`` name, not an editor ID.)
+   * - ``lua``
+     - Nspire Lua.
+   * - ``json``, ``markdown``, ``makefile``, ``plaintext``
+     - ``tide.json`` and other JSON, Markdown, makefiles, and anything else.
+
+When you contribute a new language, use its ID for that extension's snippets, completions, hovers,
+and JavaScript providers. Choose a unique ID for a new language; when adding features to an existing
+language, contribute under its ID without adding a new ``languages`` entry. ``tide.editor.file()``
+gives the open file's ID, which is a quick way to check one.
 
 Prefer a manifest contribution when its fixed data is enough. Use JavaScript when suggestions or
 diagnostics depend on the current text, project files, or settings. A manifest-only extension is
@@ -127,7 +155,9 @@ Here is a minimal language contribution for ``.foo`` files:
      }
    }
 
-For working examples, inspect the built-in extension folders in the `TIde source <https://github.com/XSamuraiCoder/TIde/tree/main/extensions>`_.
+For working examples, inspect the built-in extensions (*CE Languages*, *Plus Languages*, and
+*Nspire*) in the `TIde source <https://github.com/XSamuraiCoder/TIde/tree/main/extensions>`_.
+*Nspire* shows commands with ``when``, ``tide.run``, and ``tide.calculator.send``.
 
 .. _themes:
 
@@ -331,43 +361,96 @@ get editor completions and type checking while writing ``main.js``.
 Extension API
 -------------
 
-* ``tide.version`` is the running TIde version. ``tide.extension`` describes the extension with its
-  ``id``, ``dir``, and ``manifest``. ``tide.monaco`` exposes Monaco for advanced editor features.
-* ``tide.commands.register(id, label, run, options?)`` adds a command to the Run menu and editor
-  context menu. ``options`` can include a ``shortcut``, and ``when`` to show the command only in the
-  projects it's for: ``{ project: true }`` while a folder is open, ``{ calculator: ["nspire"] }`` in a
-  project for those calculators (``ce``, ``plus`` or ``nspire``), and ``{ language: ["c", "cpp"] }`` in
-  one in those languages (a project whose tide.json doesn't name its language counts). A command with
-  ``when`` doesn't show with no folder open.
-* ``tide.on(event, callback)`` listens for ``open``, ``save``, ``run``, ``project``, or ``settings``
-  events. Event details are:
+Everything that registers something (``commands.register``, ``on``, and the ``languages``
+providers) returns a disposable: call its ``dispose()`` to undo it early. TIde disposes them all
+when the extension stops.
 
-  * ``open`` and ``save``: ``{name, path, language}``; ``path`` is ``null`` for unsaved or
-    browser-stored files.
-  * ``run``: ``{programs, launch}`` after a program runs in TIde's emulator.
-  * ``project``: ``{root, name}`` when a project folder opens. ``tide.project()`` also has its
-    ``calculator`` and, when tide.json names it, its ``language``.
-  * ``settings``: the settings object after settings change.
+About the extension
+   * ``tide.version`` is the running TIde version, such as ``2.2.0``, or ``dev`` in the browser
+     build and in development builds.
+   * ``tide.extension`` is ``{id, dir, manifest}``: its id, its folder (``tide:<id>`` for a built-in
+     extension running from TIde itself in the browser), and its parsed ``extension.json``.
+   * ``tide.monaco`` is Monaco itself, for anything the rest of the API doesn't cover.
+   * ``tide.subscriptions.push(disposable, ...)`` tracks registrations you make through
+     ``tide.monaco`` directly, so TIde disposes them too.
 
-  Keep handlers quick; perform slow work asynchronously so the editor remains responsive.
-* ``tide.editor.file()`` returns the current file's ``name``, ``path``, and ``language`` or ``null``.
-  ``text()``, ``setText(text)``, ``selection()``, and ``insert(text)`` read or edit its contents.
-* ``tide.languages.completions(language, provider)``, ``hover(language, provider)``, and
-  ``signatureHelp(language, provider)`` register Monaco providers. ``builtIn(language)`` enables
-  TIde's built-in IntelliSense for ``tibasic``, ``c``, ``ez80``, ``python``, or ``tipython``.
-  ``markers(model, markers)`` displays diagnostics in the editor.
-* ``tide.subscriptions.push(disposable, ...)`` tracks custom Monaco registrations. TIde disposes
-  tracked registrations when the extension stops; registrations made through the ``tide`` API are
-  tracked automatically.
-* ``tide.project()`` returns the current project's ``root`` and ``name`` or ``null``.
-  ``tide.settings()`` returns the settings in use. ``tide.message(text)`` shows a status message.
-* ``tide.run(command, directory?)`` runs a command in the open project and resolves to
-  ``{ok, output}``.
-* ``tide.files.read(path)`` reads text relative to the extension folder. ``readBinary(path)``,
-  ``write(path, text)``, and ``open(path)`` use paths relative to the open project. Binary reads and
-  writes also accept absolute paths.
-* ``tide.calculator.show()`` opens the calculator. ``family()`` returns its family or ``null``;
-  ``macro(name, argument?)`` runs a calculator macro; and ``send(files)`` sends named byte arrays.
+Commands
+   ``tide.commands.register(id, label, run, options?)`` adds a command to the **Run** menu in the
+   menu bar and to the editor's right-click menu. TIde prefixes ``id`` with the extension's id, so
+   two extensions can use the same one. If ``run`` throws or its promise rejects, the status bar
+   shows "<label> failed" with the error. ``options`` can have:
+
+   * ``shortcut``: a hint such as ``"Ctrl+Alt+L"`` shown beside the command in the menus. It is a
+     label only; TIde doesn't bind the key.
+   * ``when``: show the command only in the projects it's for. ``{ project: true }`` shows it while
+     a folder is open; ``{ calculator: ["nspire"] }`` in a project for those calculators (``ce``,
+     ``plus`` or ``nspire``); and ``{ language: ["c", "cpp"] }`` in one in those languages, by their
+     ``tide.json`` names (``tibasic``, ``c``, ``cpp``, ``ez80``, ``z80``, ``tipython``, ``py2ez80``,
+     ``lua``). A project whose ``tide.json`` doesn't name its language counts for every language. A
+     command with ``when`` doesn't show with no folder open; one without it always shows.
+
+Events
+   ``tide.on(event, callback)`` calls ``callback(detail)`` when something happens:
+
+   * ``open`` and ``save``: ``{name, path, language}`` when a file or program opens in a tab or is
+     saved. ``path`` is ``null`` for calculator programs and browser-stored files; ``language`` is the
+     editor's language ID.
+   * ``run``: ``{programs, launch}`` after programs run in TIde's emulator: the names of the
+     programs sent, and the one launched.
+   * ``project``: ``{root, name}`` when a folder opens. In a workspace of several folders it fires
+     again whenever another folder becomes the active one, and ``{root: null, name: null}`` when
+     the folder is closed.
+   * ``settings``: the settings in use, after they change.
+
+   A handler that throws doesn't stop the others. Keep handlers quick, and do slow work
+   asynchronously so the editor stays responsive.
+
+The editor
+   ``tide.editor.file()`` returns the open tab's ``{name, path, language}``, or ``null`` when no
+   file or program is open. ``text()`` and ``setText(text)`` read and replace its whole contents;
+   ``selection()`` returns the selected text; ``insert(text)`` replaces the selection or inserts at
+   the cursor. Edits go through the editor, so :kbd:`Ctrl+Z` undoes them.
+
+Languages
+   * ``tide.languages.completions(language, provider)``, ``hover(language, provider)``, and
+     ``signatureHelp(language, provider)`` register Monaco providers for an editor language ID.
+   * ``builtIn(language)`` turns on TIde's own IntelliSense for a language: ``tibasic``, ``c``,
+     ``ez80``, ``python`` (py2ez80), or ``tipython``. It brings completions, hover help, signature
+     help, checks, quick fixes, and the outline, as each language has them. The Extensions view
+     lists it as "IntelliSense for …".
+   * ``markers(model, markers)`` shows problems in a file: squiggles, and the count in the status
+     bar. Each call replaces this extension's markers on that model.
+
+The project
+   * ``tide.project()`` returns the open folder's ``{root, name, calculator, language?}``, or
+     ``null``. In a workspace it's the active folder: the one builds, Source Control, and
+     ``tide.json`` follow. ``calculator`` is ``tide.json``'s, or the calculator chosen in the status
+     bar; ``language`` is there only when ``tide.json`` names it.
+   * ``tide.run(command, directory?)`` runs a command line in ``directory`` (by default the open
+     folder), as ``tide.json``'s ``build`` would, with the toolchain folders from Settings on
+     ``PATH``. Its output streams to the Output tab, and it resolves to ``{ok, output}``. It
+     rejects when there's no folder open and no ``directory``. Commands run only in the desktop
+     app.
+   * ``tide.settings()`` returns the settings in use: yours, with the project's ``tide.json``
+     ``editor`` values over them.
+   * ``tide.message(text)`` shows a message in the status bar.
+
+Files
+   * ``tide.files.read(path)`` reads a text file. A relative path is from the extension's folder,
+     for files it bundles.
+   * ``readBinary(path)``, ``write(path, text)``, and ``open(path)`` (which opens it in a tab) take
+     paths relative to the open folder, or absolute paths. With no folder open, relative paths are
+     from the extension's folder.
+
+The calculator
+   * ``tide.calculator.show()`` opens the calculator panel.
+   * ``family()`` starts the calculator if needed and resolves to ``ce``, ``plus``, ``nspire``,
+     ``other``, or ``null`` when no calculator is set up.
+   * ``macro(name, argument?)`` runs a calculator macro, as ``tide.json``'s steps do:
+     ``key.press``, ``key.type``, ``program.run``, ``program.open``, ``app.open``, or ``wait``. For
+     example, ``macro("program.run", "HELLO")``.
+   * ``send(files)`` sends ``[{name, bytes}]`` (``bytes`` a ``Uint8Array``) to the calculator, such
+     as a built ``.8xp`` or ``.tns``.
 
 Here is a command that opens a project file and handles the case where no project is open:
 
@@ -406,6 +489,10 @@ calculator:
 Registrations are removed when an extension is disabled or reloaded. Extensions with ``main.js`` run
 inside TIde and can access the APIs above. Only install code from sources you trust.
 
+Each TIde window (**File → New window**) runs its own copy of every extension, so module-level state
+in ``main.js`` isn't shared between windows. Saving an extension's files reloads it in the window you
+saved from; other windows pick up the change when they're opened again.
+
 Test and package
 ----------------
 
@@ -415,7 +502,9 @@ by editing the manifest or JavaScript and trying the change again. Use this chec
 
 * Does the extension activate with no error in the Extensions view?
 * Do snippets, completions, and hovers appear for the intended language ID?
-* Do commands work with and without an open project or file, as applicable?
+* Do commands work with and without an open project or file, as applicable, and does ``when`` show
+  them only in the projects they're for?
+* With themes, does each one appear in **Settings → Theme**, and does text read well on it?
 * Does disabling or reloading the extension remove its providers and commands?
 * Does the exported package include every file the extension reads?
 

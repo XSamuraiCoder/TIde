@@ -42,7 +42,7 @@ export interface ThemeSyntax {
   /** Colons, commas and brackets. */
   delimiter?: string;
 }
-const SYNTAX_KEYS: (keyof ThemeSyntax)[] = ["text", "comment", "string", "number", "operator", "keyword", "io", "function", "type", "variable", "delimiter"];
+export const SYNTAX_KEYS: (keyof ThemeSyntax)[] = ["text", "comment", "string", "number", "operator", "keyword", "io", "function", "type", "variable", "delimiter"];
 
 export interface Theme {
   /** Its id: the theme setting's value. */
