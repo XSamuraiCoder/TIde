@@ -1,0 +1,27 @@
+/* TIde's colors on the Read the Docs theme: its navy for the side bar, its blue for links. */
+.wy-side-nav-search,
+.wy-nav-top {
+    background-color: #0f1f3f;
+}
+.wy-side-nav-search .wy-dropdown > a img.logo,
+.wy-side-nav-search > a img.logo {
+    max-width: 96px;
+}
+.wy-nav-side {
+    background: #0c1934;
+}
+a,
+a:visited {
+    color: #0284c7;
+}
+.wy-menu-vertical a:hover {
+    background-color: #14284f;
+}
+/* Keyboard shortcuts, as :kbd:`Ctrl+E`. */
+kbd {
+    padding: 1px 5px;
+    font-size: 0.85em;
+    border: 1px solid #c9d3e3;
+    border-radius: 3px;
+    background: #f5f8fc;
+}
