@@ -2,6 +2,7 @@
 // before running, what to send to the calculator and start, which calculator it's for, a few editor
 // settings, and named scripts.
 import type { Settings } from "./settings";
+import { keys } from "./keys";
 
 export const CONFIG_DIR = ".tide";
 export const CONFIG_FILE = "tide.json";
@@ -98,7 +99,7 @@ export const CONFIG_SCHEMA = {
     build: {
       type: "string",
       description:
-        "The command line Build (Ctrl+E) runs, and Run runs first, in the project folder, in the system shell (cmd on Windows, sh elsewhere), so && and pipes work. Without it, a folder with a Makefile runs make. Its full log is in the Output panel.",
+        keys("The command line Build (Ctrl+E) runs, and Run runs first, in the project folder, in the system shell (cmd on Windows, sh elsewhere), so && and pipes work. Without it, a folder with a Makefile runs make. Its full log is in the Output panel."),
       examples: ["make", "make debug", "make V=1"],
     },
     prerun: {

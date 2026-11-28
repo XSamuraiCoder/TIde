@@ -1,6 +1,8 @@
 // TIde's right-click menus. One menu at a time, drawn in TIde's style, with keyboard support:
 // arrows move, Enter or Space picks, Escape or clicking elsewhere closes.
 
+import { keys } from "./keys";
+
 type Action = { label: string; shortcut?: string; run: () => void };
 /** A menu item. With `shift`, holding Shift while the menu is open turns it into that other action. */
 /** With `checked`, it's a setting that's on (a check mark) or off. */
@@ -51,7 +53,7 @@ export function showMenu(x: number, y: number, items: MenuItem[], closed?: () =>
     row.setAttribute("role", "menuitem");
     row.disabled = !!item.disabled;
     const label = Object.assign(document.createElement("span"), { textContent: item.label });
-    const key = Object.assign(document.createElement("kbd"), { textContent: item.shortcut ?? "" });
+    const key = Object.assign(document.createElement("kbd"), { textContent: keys(item.shortcut) ?? "" });
     row.append(label, key);
     if (item.checked !== undefined) {
       row.setAttribute("role", "menuitemcheckbox");
@@ -62,7 +64,7 @@ export function showMenu(x: number, y: number, items: MenuItem[], closed?: () =>
       const alt = item.shift;
       shiftRows.push(on => {
         label.textContent = on ? alt.label : item.label;
-        key.textContent = (on ? alt.shortcut : item.shortcut) ?? "";
+        key.textContent = keys(on ? alt.shortcut : item.shortcut) ?? "";
         row.classList.toggle("shifted", on);
       });
     }

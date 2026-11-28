@@ -1,6 +1,7 @@
 // The Source Control view: git status of the open folder, staging, commit, push and pull.
 // The markup is in index.html; this fills in the file lists and runs the git commands.
 import { fs, type GitFile, type GitResult, type GitStatus } from "./store";
+import { mod } from "./keys";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const ui = {
@@ -125,7 +126,7 @@ export function createScm(opts: {
 
   ui.commit.addEventListener("click", () => void commit());
   ui.message.addEventListener("keydown", e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); void commit(); }
+    if (mod(e) && e.key === "Enter") { e.preventDefault(); void commit(); }
   });
   ui.pull.addEventListener("click", () => void run("Pulling", r => fs.git.pull(r), "Pulled"));
   ui.push.addEventListener("click", () => void run("Pushing", r => fs.git.push(r), "Pushed"));

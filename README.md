@@ -188,28 +188,28 @@ Writing an extension has IntelliSense too: `extension.json` gets completions, ho
 
 ## Shortcuts
 
-Use Cmd instead of Ctrl on macOS.
+On macOS, Cmd takes Ctrl's place, and the menus show the keys the Mac way. The terminal stays on Ctrl+`` ` `` there, since Cmd+`` ` `` switches windows, and in the editor, suggestions and Go to line stay on Ctrl+Space and Ctrl+G; Redo is ⇧⌘Z and Replace ⌥⌘F. In the terminal on macOS, Cmd+C copies and Ctrl+C always stops the command.
 
-| Keys | Action |
-|---|---|
-| `Ctrl+S` | Save |
-| `Ctrl+E` | Build |
-| `F5` | Build and run in the calculator |
-| `Ctrl+Shift+E` | Build a TI-BASIC program to a new location |
-| `Ctrl+J` | Search the docs |
-| `Ctrl+Shift+J` | Open or close the docs page |
-| `Ctrl+B` | Show or hide the side bar |
-| `Ctrl+,` | Settings |
-| `Ctrl+Shift+G` | Source Control |
-| `Ctrl+Shift+X` | Extensions |
-| ``Ctrl+` `` | Terminal |
-| `Ctrl+Shift+U` | Output |
-| `Ctrl+N` | Find or create a program |
-| `Ctrl+Shift+O` | Open a folder |
-| `Ctrl+Shift+N` | New window (desktop app) |
-| `Ctrl+W` | Close the tab |
+| Windows and Linux | macOS | Action |
+|---|---|---|
+| `Ctrl+S` | `⌘S` | Save |
+| `Ctrl+E` | `⌘E` | Build |
+| `F5` | `F5` | Build and run in the calculator |
+| `Ctrl+Shift+E` | `⇧⌘E` | Build a TI-BASIC program to a new location |
+| `Ctrl+J` | `⌘J` | Search the docs |
+| `Ctrl+Shift+J` | `⇧⌘J` | Open or close the docs page |
+| `Ctrl+B` | `⌘B` | Show or hide the side bar |
+| `Ctrl+,` | `⌘,` | Settings |
+| `Ctrl+Shift+G` | `⇧⌘G` | Source Control |
+| `Ctrl+Shift+X` | `⇧⌘X` | Extensions |
+| ``Ctrl+` `` | ``⌃` `` | Terminal |
+| `Ctrl+Shift+U` | `⇧⌘U` | Output |
+| `Ctrl+N` | `⌘N` | Find or create a program |
+| `Ctrl+Shift+O` | `⇧⌘O` | Open a folder (in the editor, the file's outline) |
+| `Ctrl+Shift+N` | `⇧⌘N` | New window (desktop app) |
+| `Ctrl+W` | `⌘W` | Close the tab |
 
-In the program search, Enter opens the first match or creates the program if nothing matches. `Ctrl+Enter` always creates it.
+In the program search, Enter opens the first match or creates the program if nothing matches. `Ctrl+Enter` (`⌘↩` on macOS) always creates it.
 
 ## Development
 

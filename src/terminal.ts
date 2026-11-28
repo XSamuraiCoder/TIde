@@ -8,6 +8,7 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 import { invoke } from "@tauri-apps/api/core";
 import { mix, token } from "./theme";
+import { mod } from "./keys";
 
 /** TIde's navy, with the same ANSI colors as Output. */
 const DARK = {
@@ -44,8 +45,9 @@ const themeNow = () => {
   };
 };
 
-/** Keys TIde keeps while the terminal has focus: Ctrl+` and Ctrl+Shift+U (the panel's own toggles). */
-const forTide = (e: KeyboardEvent) => (e.ctrlKey || e.metaKey) && (e.key === "`" || (e.shiftKey && e.key.toLowerCase() === "u"));
+/** Keys TIde keeps while the terminal has focus: Ctrl+` and Ctrl+Shift+U (Cmd+Shift+U on macOS), the panel's own toggles. */
+const forTide = (e: KeyboardEvent) =>
+  (e.key === "`" && e.ctrlKey && !e.metaKey) || (mod(e) && e.shiftKey && e.key.toLowerCase() === "u");
 
 export interface TideTerminal {
   el: HTMLElement;
@@ -135,17 +137,18 @@ export function createTerminal(opts: {
   term.onResize(({ cols, rows }) => { if (id !== null) void invoke("pty_resize", { id, cols, rows }).catch(() => {}); });
 
   // Ctrl+C copies when there's a selection (and interrupts otherwise); Ctrl+V and Ctrl+Shift+V paste.
+  // On macOS that's Cmd+C and Cmd+V, and Ctrl+C always interrupts.
   term.attachCustomKeyEventHandler(e => {
     if (e.type !== "keydown") return true;
     if (forTide(e)) return false;
     const key = e.key.toLowerCase();
-    if ((e.ctrlKey || e.metaKey) && key === "c" && term.hasSelection()) {
+    if (mod(e) && key === "c" && term.hasSelection()) {
       void navigator.clipboard.writeText(term.getSelection());
       term.clearSelection();
       return false;
     }
     // Returning false leaves the key to the browser, whose paste event xterm.js then handles.
-    if ((e.ctrlKey || e.metaKey) && key === "v") return false;
+    if (mod(e) && key === "v") return false;
     return true;
   });
   // TIde's own shortcuts (Ctrl+S, F5, Ctrl+W…) stay out of the terminal's way, except its toggles.

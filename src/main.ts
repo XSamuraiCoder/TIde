@@ -21,6 +21,7 @@ import { ASM_CATALOG, ASM_LANG } from "./asm-support";
 import { getVersion as appVersion } from "@tauri-apps/api/app";
 import { createScm } from "./scm";
 import { menuIsOpen, showMenu, type MenuItem } from "./menu";
+import { isMac, keys, mod } from "./keys";
 import { openWindow, titleWindow, windowStart, type WindowStart } from "./windows";
 import "./select-popup"; // TIde's own option list for every <select>
 import { offerToolchain, type ToolchainOffer } from "./toolchain-setup";
@@ -344,6 +345,16 @@ const editor = monaco.editor.create($("editor"), {
   // Files dropped on the editor open in tabs (setUpDragging), rather than going into the text.
   dropIntoEditor: { enabled: false },
 });
+// On macOS the editor has Cmd+E (find with the selection) and Cmd+Shift+G (previous match), which
+// are Build and Source Control in TIde; Cmd+G and Enter still go through the matches.
+if (isMac)
+  monaco.editor.addKeybindingRules([
+    { keybinding: monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyE, command: "-actions.findWithSelection" },
+    {
+      keybinding: monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyG,
+      command: "-editor.action.previousMatchFindAction",
+    },
+  ]);
 // The bundled code font loads after the editor measured its characters: measure again once it's in.
 void document.fonts.load(`${settings().fontSize}px "JetBrains Mono Variable"`).then(() => monaco.editor.remeasureFonts());
 // The code and interface fonts you picked (fonts.ts), once they're loaded.
@@ -389,7 +400,6 @@ const baseName = (path: string) =>
 const isDirty = (d: Doc) =>
   d.model.getAlternativeVersionId() !== d.savedVersion;
 const activeDoc = () => (active ? docs.get(active) : undefined);
-const mod = (e: KeyboardEvent) => e.ctrlKey || e.metaKey;
 /** In a folder with a Makefile, everything except a TI-BASIC program builds with make. */
 const usesMake = () =>
   !!project &&
@@ -3562,7 +3572,7 @@ function openDocs(name?: string) {
   openView({
     id: DOCS_TAB,
     label: "Docs",
-    hint: "Documentation for TI-BASIC, the C libraries, py2ez80 and eZ80 assembly (Ctrl+Shift+J)",
+    hint: keys("Documentation for TI-BASIC, the C libraries, py2ez80 and eZ80 assembly (Ctrl+Shift+J)"),
     el: docsEl,
   });
   docsView.open(lang, name);
@@ -3749,13 +3759,13 @@ function applyEditorMode() {
   els.exportBtn.hidden = !make && !asm && !script && (!basic || !activeDoc());
   els.run.hidden = !fs.available || els.exportBtn.hidden;
   els.exportBtn.textContent = asm ? "Assemble .8xp" : buildLabel();
-  els.exportBtn.title = asm
+  els.exportBtn.title = keys(asm
     ? "Assembles this file with spasm-ng into an .8xp next to it (Ctrl+E). F5 also sends it to the calculator."
     : make
       ? `Runs make in ${project?.name} (Ctrl+E). Saves changed files first.`
       : script
         ? "Packs the script with Luna into a .tns (Ctrl+E). Ctrl+Shift+E picks a new location."
-        : "Ctrl+E rebuilds to the same file. Ctrl+Shift+E picks a new location.";
+        : "Ctrl+E rebuilds to the same file. Ctrl+Shift+E picks a new location.");
   renderDocList(); // the docs follow the toolchain of the active tab
   renderProject(); // so does the status bar
 }
@@ -5015,7 +5025,7 @@ function editMenu(): MenuItem[] {
             editor.focus();
             editor.trigger("menu", "type", { text });
           })
-          .catch(() => setMessage("TIde can't read the clipboard from the menu here: press Ctrl+V.")),
+          .catch(() => setMessage(keys("TIde can't read the clipboard from the menu here: press Ctrl+V."))),
     },
     "-",
     { label: "Find", shortcut: "Ctrl+F", disabled: none, run: editorDoes("actions.find") },
@@ -5230,6 +5240,12 @@ els.find.addEventListener("keydown", (e) => {
 });
 
 window.addEventListener("keydown", (e) => {
+  // The terminal is Ctrl+` on macOS too, where Cmd+` switches windows.
+  if (e.key === "`" && e.ctrlKey && !e.metaKey && fs.desktop) {
+    e.preventDefault();
+    panel.toggle("terminal");
+    return;
+  }
   if (!mod(e)) return;
   const key = e.key.toLowerCase(); // Caps Lock and Shift report capitals
   if (e.shiftKey && key === "o") {
@@ -5274,9 +5290,6 @@ window.addEventListener("keydown", (e) => {
   } else if (e.shiftKey && key === "u") {
     e.preventDefault();
     panel.toggle("output");
-  } else if (e.key === "`" && fs.desktop) {
-    e.preventDefault();
-    panel.toggle("terminal");
   } else if (key === ",") {
     e.preventDefault();
     openSettings();
